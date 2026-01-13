@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Personal Trainer App",
+    "slug": "personal-trainer-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.personaltrainer.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.personaltrainer.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "sdkVersion": "47.0.0"
+  }
+}

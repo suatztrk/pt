@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Trainer App - Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #6200ee, #3700b3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .tab-bar {
+            display: flex;
+            background: white;
+            border-radius: 25px;
+            padding: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px 8px;
+            text-align: center;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+        
+        .tab.active {
+            background: #6200ee;
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #6200ee;
+            margin-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #6200ee;
+            margin-bottom: 5px;
+        }
+        
+        .client-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .client-item:last-child {
+            border-bottom: none;
+        }
+        
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            background: #6200ee;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .client-info h4 {
+            margin-bottom: 5px;
+        }
+        
+        .client-info p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .workout-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .workout-item:last-child {
+            border-bottom: none;
+        }
+        
+        .workout-details {
+            text-align: right;
+        }
+        
+        .weight {
+            font-weight: bold;
+            color: #6200ee;
+        }
+        
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background: #6200ee;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(98, 0, 238, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #6200ee;
+            border-radius: 5px;
+            width: 85%;
+            transition: width 0.3s;
+        }
+        
+        .btn {
+            background: #6200ee;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .btn:hover {
+            background: #3700b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(98, 0, 238, 0.3);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: #6200ee;
+            border: 2px solid #6200ee;
+        }
+        
+        .btn-outline:hover {
+            background: #6200ee;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 10px;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none;
+            border-color: #6200ee;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .success-message {
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .editable {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .editable:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏋️ Personal Trainer App</h1>
+        <p>Fitness Takip ve Antrenman Yönetimi</p>
+    </div>
+    
+    <div class="container">
+        <div class="tab-bar">
+            <div class="tab active" onclick="showTab('home')">Ana Sayfa</div>
+            <div class="tab" onclick="showTab('clients')">Öğrenciler</div>
+            <div class="tab" onclick="showTab('workouts')">Antrenmanlar</div>
+            <div class="tab" onclick="showTab('reports')">Raporlar</div>
+            <div class="tab" onclick="showTab('profile')">Profil</div>
+        </div>
+        
+        <!-- Ana Sayfa -->
+        <div id="home" class="tab-content">
+            <div class="card">
+                <h3>Hoş Geldiniz! 👋</h3>
+                <p>Bugün <strong>13 Ocak 2026</strong> tarihinde <strong>5</strong> antrenman planlanmış.</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">24</div>
+                    <p>Toplam Öğrenci</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">5</div>
+                    <p>Bugünkü Antrenmanlar</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Haftalık İlerleme</h3>
+                <p>Bu hafta tamamlanan antrenman oranı</p>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p style="text-align: center; font-weight: bold;">85%</p>
+            </div>
+            
+            <div class="card">
+                <h3>Hızlı İşlemler</h3>
+                <button class="btn" onclick="openModal('addClient')">Yeni Öğrenci Ekle</button>
+                <button class="btn btn-outline" onclick="openModal('createProgram')">Program Oluştur</button>
+            </div>
+        </div>
+        
+        <!-- Öğrenciler -->
+        <div id="clients" class="tab-content hidden">
+            <div class="card">
+                <h3>Öğrencilerim 👥</h3>
+                
+                <div class="client-item">
+                    <div class="avatar">AY</div>
+                    <div class="client-info">
+                        <h4>Ahmet Yılmaz</h4>
+                        <p>ahmet@example.com • 24 antrenman</p>
+                        <p style="font-size: 12px; color: #999;">Son antrenman: 12 Ocak 2026</p>
+                    </div>
+                </div>
+                
+                <div class="client-item">
+                    <div class="avatar">FK</div>
+                    <div class="client-info">
+                        <h4>Fatma Kaya</h4>
+                        <p>fatma@example.com • 18 antrenman</p>
+                        <p style="font-size: 12px; color: #999;">Son antrenman: 11 Ocak 2026</p>
+                    </div>
+                </div>
+                
+                <div class="client-item">
+                    <div class="avatar">MÖ</div>
+                    <div class="client-info">
+                        <h4>Mehmet Özkan</h4>
+                        <p>mehmet@example.com • 31 antrenman</p>
+                        <p style="font-size: 12px; color: #999;">Son antrenman: 10 Ocak 2026</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Antrenmanlar -->
+        <div id="workouts" class="tab-content hidden">
+            <div class="card">
+                <h3>Bugünkü Antrenmanlar 💪</h3>
+                <p style="margin-bottom: 15px;"><strong>3 Egzersiz</strong> • <strong>12 Set</strong></p>
+                
+                <div class="workout-item">
+                    <div>
+                        <h4>Bench Press</h4>
+                        <p>4 set × 8-10 tekrar</p>
+                    </div>
+                    <div class="workout-details">
+                        <div class="weight">80 kg</div>
+                    </div>
+                </div>
+                
+                <div class="workout-item">
+                    <div>
+                        <h4>Squat</h4>
+                        <p>4 set × 12 tekrar</p>
+                    </div>
+                    <div class="workout-details">
+                        <div class="weight">100 kg</div>
+                    </div>
+                </div>
+                
+                <div class="workout-item">
+                    <div>
+                        <h4>Pull-up</h4>
+                        <p>4 set × 6-8 tekrar</p>
+                    </div>
+                    <div class="workout-details">
+                        <div class="weight">Vücut ağırlığı</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Antrenman Programları</h3>
+                <p>Kişiselleştirilmiş programlar oluşturun ve takip edin.</p>
+                <button class="btn btn-outline" onclick="openModal('createProgram')">Yeni Program Oluştur</button>
+            </div>
+        </div>
+        
+        <!-- Raporlar -->
+        <div id="reports" class="tab-content hidden">
+            <div class="card">
+                <h3>İlerleme İstatistikleri 📊</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">156</div>
+                        <p>Toplam Antrenman</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">12</div>
+                        <p>Bu Hafta</p>
+                    </div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <h4>En Sevilen Egzersiz: <span style="color: #6200ee;">Bench Press</span></h4>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Aylık Rapor - Ocak 2026</h3>
+                <div style="margin: 15px 0;">
+                    <p>• Antrenman sıklığında %15 artış</p>
+                    <p>• En çok gelişim: Göğüs kasları</p>
+                    <p>• Hedef kiloya %70 yaklaşıldı</p>
+                </div>
+                <button class="btn" onclick="downloadReport()">PDF İndir</button>
+            </div>
+        </div>
+        
+        <!-- Profil -->
+        <div id="profile" class="tab-content hidden">
+            <div class="card">
+                <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <div class="avatar" style="width: 80px; height: 80px; font-size: 24px; margin-right: 20px;">AY</div>
+                    <div>
+                        <h3>Ahmet Yılmaz</h3>
+                        <p>ahmet@example.com</p>
+                        <p style="color: #666; font-style: italic;">Kuvvet Antrenmanı, Kilo Verme</p>
+                    </div>
+                </div>
+                <button class="btn btn-outline" onclick="openModal('editProfile')">Profili Düzenle</button>
+            </div>
+            
+            <div class="card">
+                <h3>Hızlı İstatistikler</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">24</div>
+                        <p>Aktif Öğrenci</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">4.8</div>
+                        <p>Ortalama Puan</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Ayarlar ⚙️</h3>
+                <p>• Bildirimler: Açık</p>
+                <p>• Koyu Tema: Kapalı</p>
+                <p>• Otomatik Yedekleme: Açık</p>
+                <br>
+                <button class="btn btn-outline" onclick="openModal('settings')">Ayarları Düzenle</button>
+            </div>
+        </div>
+    </div>
+    
+    <button class="fab" onclick="addNew()">+</button>
+    
+    <!-- Modal'lar -->
+    <!-- Öğrenci Ekleme Modal -->
+    <div id="addClientModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addClientModal')">&times;</span>
+            <h2>Yeni Öğrenci Ekle</h2>
+            <div class="success-message" id="clientSuccess">Öğrenci başarıyla eklendi!</div>
+            <form onsubmit="addClient(event)">
+                <div class="form-group">
+                    <label>Ad Soyad *</label>
+                    <input type="text" id="clientName" required>
+                </div>
+                <div class="form-group">
+                    <label>E-posta *</label>
+                    <input type="email" id="clientEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefon</label>
+                    <input type="tel" id="clientPhone">
+                </div>
+                <div class="form-group">
+                    <label>Hedef</label>
+                    <select id="clientGoal">
+                        <option value="">Seçiniz</option>
+                        <option value="weight-loss">Kilo Verme</option>
+                        <option value="muscle-gain">Kas Kazanma</option>
+                        <option value="strength">Kuvvet Artırma</option>
+                        <option value="endurance">Dayanıklılık</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Boy (cm)</label>
+                        <input type="number" id="clientHeight">
+                    </div>
+                    <div class="form-group">
+                        <label>Kilo (kg)</label>
+                        <input type="number" id="clientWeight">
+                    </div>
+                </div>
+                <button type="submit" class="btn">Öğrenci Ekle</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('addClientModal')">İptal</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Antrenman Ekleme Modal -->
+    <div id="addWorkoutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('addWorkoutModal')">&times;</span>
+            <h2>Antrenman Kaydet</h2>
+            <div class="success-message" id="workoutSuccess">Antrenman başarıyla kaydedildi!</div>
+            <form onsubmit="addWorkout(event)">
+                <div class="form-group">
+                    <label>Egzersiz *</label>
+                    <select id="exerciseName" required>
+                        <option value="">Egzersiz Seçin</option>
+                        <option value="bench-press">Bench Press</option>
+                        <option value="squat">Squat</option>
+                        <option value="deadlift">Deadlift</option>
+                        <option value="pull-up">Pull-up</option>
+                        <option value="push-up">Push-up</option>
+                        <option value="shoulder-press">Shoulder Press</option>
+                        <option value="bicep-curl">Bicep Curl</option>
+                        <option value="tricep-dip">Tricep Dip</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Set Sayısı *</label>
+                        <input type="number" id="workoutSets" min="1" max="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tekrar *</label>
+                        <input type="text" id="workoutReps" placeholder="8-12" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Ağırlık (kg)</label>
+                    <input type="number" id="workoutWeight" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label>Notlar</label>
+                    <textarea id="workoutNotes" rows="3" placeholder="Antrenman hakkında notlar..."></textarea>
+                </div>
+                <button type="submit" class="btn">Antrenman Kaydet</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('addWorkoutModal')">İptal</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Program Oluşturma Modal -->
+    <div id="createProgramModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('createProgramModal')">&times;</span>
+            <h2>Yeni Program Oluştur</h2>
+            <div class="success-message" id="programSuccess">Program başarıyla oluşturuldu!</div>
+            <form onsubmit="createProgram(event)">
+                <div class="form-group">
+                    <label>Program Adı *</label>
+                    <input type="text" id="programName" required>
+                </div>
+                <div class="form-group">
+                    <label>Öğrenci</label>
+                    <select id="programClient">
+                        <option value="">Öğrenci Seçin</option>
+                        <option value="ahmet">Ahmet Yılmaz</option>
+                        <option value="fatma">Fatma Kaya</option>
+                        <option value="mehmet">Mehmet Özkan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Program Türü</label>
+                    <select id="programType">
+                        <option value="strength">Kuvvet Antrenmanı</option>
+                        <option value="cardio">Kardiyovasküler</option>
+                        <option value="mixed">Karma Antrenman</option>
+                        <option value="rehabilitation">Rehabilitasyon</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Süre (hafta)</label>
+                        <input type="number" id="programDuration" min="1" max="52" value="4">
+                    </div>
+                    <div class="form-group">
+                        <label>Haftalık Sıklık</label>
+                        <input type="number" id="programFrequency" min="1" max="7" value="3">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea id="programDescription" rows="3" placeholder="Program hakkında detaylar..."></textarea>
+                </div>
+                <button type="submit" class="btn">Program Oluştur</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('createProgramModal')">İptal</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Profil Düzenleme Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('editProfileModal')">&times;</span>
+            <h2>Profili Düzenle</h2>
+            <div class="success-message" id="profileSuccess">Profil başarıyla güncellendi!</div>
+            <form onsubmit="updateProfile(event)">
+                <div class="form-group">
+                    <label>Ad Soyad</label>
+                    <input type="text" id="profileName" value="Ahmet Yılmaz">
+                </div>
+                <div class="form-group">
+                    <label>E-posta</label>
+                    <input type="email" id="profileEmail" value="ahmet@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Telefon</label>
+                    <input type="tel" id="profilePhone" value="+90 555 123 4567">
+                </div>
+                <div class="form-group">
+                    <label>Uzmanlık Alanları</label>
+                    <textarea id="profileSpecialization" rows="3">Kuvvet Antrenmanı, Kilo Verme</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Deneyim (yıl)</label>
+                    <input type="number" id="profileExperience" value="5">
+                </div>
+                <button type="submit" class="btn">Profili Güncelle</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('editProfileModal')">İptal</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Ayarlar Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('settingsModal')">&times;</span>
+            <h2>Ayarlar</h2>
+            <div class="success-message" id="settingsSuccess">Ayarlar başarıyla kaydedildi!</div>
+            <form onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="notifications" checked> 
+                        Push Bildirimleri
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="darkMode"> 
+                        Koyu Tema
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="autoBackup" checked> 
+                        Otomatik Yedekleme
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Dil</label>
+                    <select id="language">
+                        <option value="tr" selected>Türkçe</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ağırlık Birimi</label>
+                    <select id="weightUnit">
+                        <option value="kg" selected>Kilogram (kg)</option>
+                        <option value="lbs">Pound (lbs)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Ayarları Kaydet</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('settingsModal')">İptal</button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Global değişkenler
+        let clients = [
+            { id: 1, name: 'Ahmet Yılmaz', email: 'ahmet@example.com', workouts: 24, lastWorkout: '2026-01-12' },
+            { id: 2, name: 'Fatma Kaya', email: 'fatma@example.com', workouts: 18, lastWorkout: '2026-01-11' },
+            { id: 3, name: 'Mehmet Özkan', email: 'mehmet@example.com', workouts: 31, lastWorkout: '2026-01-10' }
+        ];
+        
+        let workouts = [
+            { id: 1, exercise: 'Bench Press', sets: 4, reps: '8-10', weight: 80, date: '2026-01-13' },
+            { id: 2, exercise: 'Squat', sets: 4, reps: '12', weight: 100, date: '2026-01-13' },
+            { id: 3, exercise: 'Pull-up', sets: 4, reps: '6-8', weight: 0, date: '2026-01-13' }
+        ];
+        
+        let programs = [];
+        
+        function showTab(tabName) {
+            // Tüm tab içeriklerini gizle
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.add('hidden'));
+            
+            // Tüm tab'ları pasif yap
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Seçilen tab'ı göster
+            document.getElementById(tabName).classList.remove('hidden');
+            event.target.classList.add('active');
+            
+            // Tab değiştiğinde verileri güncelle
+            updateTabContent(tabName);
+        }
+        
+        function updateTabContent(tabName) {
+            if (tabName === 'clients') {
+                updateClientsDisplay();
+            } else if (tabName === 'workouts') {
+                updateWorkoutsDisplay();
+            } else if (tabName === 'home') {
+                updateHomeStats();
+            }
+        }
+        
+        function updateHomeStats() {
+            // Ana sayfa istatistiklerini güncelle
+            const totalClients = clients.length;
+            const todayWorkouts = workouts.filter(w => w.date === '2026-01-13').length;
+            
+            document.querySelector('.stat-card .stat-number').textContent = totalClients;
+            document.querySelectorAll('.stat-card .stat-number')[1].textContent = todayWorkouts;
+        }
+        
+        function updateClientsDisplay() {
+            const clientsContainer = document.querySelector('#clients .card');
+            let clientsHTML = '<h3>Öğrencilerim 👥</h3>';
+            
+            clients.forEach(client => {
+                const initials = client.name.split(' ').map(n => n[0]).join('');
+                clientsHTML += `
+                    <div class="client-item">
+                        <div class="avatar">${initials}</div>
+                        <div class="client-info">
+                            <h4>${client.name}</h4>
+                            <p>${client.email} • ${client.workouts} antrenman</p>
+                            <p style="font-size: 12px; color: #999;">Son antrenman: ${new Date(client.lastWorkout).toLocaleDateString('tr-TR')}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            clientsContainer.innerHTML = clientsHTML;
+        }
+        
+        function updateWorkoutsDisplay() {
+            const workoutsContainer = document.querySelector('#workouts .card');
+            const todayWorkouts = workouts.filter(w => w.date === '2026-01-13');
+            
+            let workoutsHTML = `
+                <h3>Bugünkü Antrenmanlar 💪</h3>
+                <p style="margin-bottom: 15px;"><strong>${todayWorkouts.length} Egzersiz</strong> • <strong>${todayWorkouts.reduce((sum, w) => sum + w.sets, 0)} Set</strong></p>
+            `;
+            
+            todayWorkouts.forEach(workout => {
+                workoutsHTML += `
+                    <div class="workout-item">
+                        <div>
+                            <h4>${workout.exercise}</h4>
+                            <p>${workout.sets} set × ${workout.reps} tekrar</p>
+                        </div>
+                        <div class="workout-details">
+                            <div class="weight">${workout.weight > 0 ? workout.weight + ' kg' : 'Vücut ağırlığı'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            workoutsContainer.innerHTML = workoutsHTML;
+        }
+        
+        function addNew() {
+            const activeTab = document.querySelector('.tab.active').textContent.trim();
+            
+            switch(activeTab) {
+                case 'Öğrenciler':
+                    openModal('addClient');
+                    break;
+                case 'Antrenmanlar':
+                    openModal('addWorkout');
+                    break;
+                default:
+                    openModal('addClient');
+            }
+        }
+        
+        function openModal(modalType) {
+            let modalId;
+            switch(modalType) {
+                case 'addClient':
+                    modalId = 'addClientModal';
+                    break;
+                case 'addWorkout':
+                    modalId = 'addWorkoutModal';
+                    break;
+                case 'createProgram':
+                    modalId = 'createProgramModal';
+                    break;
+                case 'editProfile':
+                    modalId = 'editProfileModal';
+                    break;
+                case 'settings':
+                    modalId = 'settingsModal';
+                    break;
+            }
+            
+            if (modalId) {
+                document.getElementById(modalId).style.display = 'block';
+            }
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            // Formu temizle
+            const form = document.querySelector(`#${modalId} form`);
+            if (form) {
+                form.reset();
+            }
+            // Success mesajını gizle
+            const successMsg = document.querySelector(`#${modalId} .success-message`);
+            if (successMsg) {
+                successMsg.style.display = 'none';
+            }
+        }
+        
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+        
+        function addClient(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('clientName').value;
+            const email = document.getElementById('clientEmail').value;
+            const phone = document.getElementById('clientPhone').value;
+            const goal = document.getElementById('clientGoal').value;
+            
+            const newClient = {
+                id: clients.length + 1,
+                name: name,
+                email: email,
+                phone: phone,
+                goal: goal,
+                workouts: 0,
+                lastWorkout: null
+            };
+            
+            clients.push(newClient);
+            
+            // Success mesajını göster
+            const successMsg = document.getElementById('clientSuccess');
+            successMsg.style.display = 'block';
+            
+            // Notification göster
+            showNotification(`${name} başarıyla eklendi!`);
+            
+            // 2 saniye sonra modal'ı kapat
+            setTimeout(() => {
+                closeModal('addClientModal');
+                updateClientsDisplay();
+                updateHomeStats();
+            }, 2000);
+        }
+        
+        function addWorkout(event) {
+            event.preventDefault();
+            
+            const exercise = document.getElementById('exerciseName').options[document.getElementById('exerciseName').selectedIndex].text;
+            const sets = parseInt(document.getElementById('workoutSets').value);
+            const reps = document.getElementById('workoutReps').value;
+            const weight = parseFloat(document.getElementById('workoutWeight').value) || 0;
+            
+            const newWorkout = {
+                id: workouts.length + 1,
+                exercise: exercise,
+                sets: sets,
+                reps: reps,
+                weight: weight,
+                date: '2026-01-13'
+            };
+            
+            workouts.push(newWorkout);
+            
+            // Success mesajını göster
+            const successMsg = document.getElementById('workoutSuccess');
+            successMsg.style.display = 'block';
+            
+            // Notification göster
+            showNotification(`${exercise} antrenmanı kaydedildi!`);
+            
+            // 2 saniye sonra modal'ı kapat
+            setTimeout(() => {
+                closeModal('addWorkoutModal');
+                updateWorkoutsDisplay();
+                updateHomeStats();
+            }, 2000);
+        }
+        
+        function createProgram(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('programName').value;
+            const client = document.getElementById('programClient').value;
+            const type = document.getElementById('programType').value;
+            const duration = document.getElementById('programDuration').value;
+            
+            const newProgram = {
+                id: programs.length + 1,
+                name: name,
+                client: client,
+                type: type,
+                duration: duration,
+                created: new Date().toISOString().split('T')[0]
+            };
+            
+            programs.push(newProgram);
+            
+            // Success mesajını göster
+            const successMsg = document.getElementById('programSuccess');
+            successMsg.style.display = 'block';
+            
+            // Notification göster
+            showNotification(`${name} programı oluşturuldu!`);
+            
+            // 2 saniye sonra modal'ı kapat
+            setTimeout(() => {
+                closeModal('createProgramModal');
+            }, 2000);
+        }
+        
+        function updateProfile(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('profileName').value;
+            
+            // Success mesajını göster
+            const successMsg = document.getElementById('profileSuccess');
+            successMsg.style.display = 'block';
+            
+            // Notification göster
+            showNotification('Profil başarıyla güncellendi!');
+            
+            // 2 saniye sonra modal'ı kapat
+            setTimeout(() => {
+                closeModal('editProfileModal');
+            }, 2000);
+        }
+        
+        function saveSettings(event) {
+            event.preventDefault();
+            
+            // Success mesajını göster
+            const successMsg = document.getElementById('settingsSuccess');
+            successMsg.style.display = 'block';
+            
+            // Notification göster
+            showNotification('Ayarlar başarıyla kaydedildi!');
+            
+            // 2 saniye sonra modal'ı kapat
+            setTimeout(() => {
+                closeModal('settingsModal');
+            }, 2000);
+        }
+        
+        function downloadReport() {
+            showNotification('Rapor hazırlanıyor...', 'info');
+            
+            setTimeout(() => {
+                try {
+                    generatePDFReport();
+                    showNotification('PDF raporu başarıyla indirildi!');
+                } catch (error) {
+                    // PDF oluşturulamazsa metin dosyası indir
+                    const reportContent = generateReportContent();
+                    downloadTextReport(reportContent);
+                    showNotification('Rapor metin dosyası olarak indirildi!');
+                }
+            }, 1500);
+        }
+        
+        function generatePDFReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Türkçe karakter desteği için font ayarları
+            doc.setFont("helvetica");
+            
+            // PDF başlığı
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text('PERSONAL TRAINER RAPORU', 20, 30);
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'normal');
+            const today = new Date().toLocaleDateString('tr-TR');
+            const month = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+            doc.text(month + ' - Rapor Tarihi: ' + today, 20, 45);
+            
+            // Çizgi
+            doc.line(20, 50, 190, 50);
+            
+            let yPos = 65;
+            
+            // Genel İstatistikler
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('GENEL ISTATISTIKLER', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text('• Toplam Ogrenci Sayisi: ' + clients.length, 25, yPos);
+            yPos += 8;
+            doc.text('• Bu Ayki Antrenman Sayisi: ' + (workouts.length * 4), 25, yPos);
+            yPos += 8;
+            doc.text('• Haftalik Ortalama: ' + Math.round(workouts.length * 4 / 4) + ' antrenman', 25, yPos);
+            yPos += 8;
+            doc.text('• En Aktif Gun: Pazartesi', 25, yPos);
+            yPos += 20;
+            
+            // İlerleme Analizi
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('ILERLEME ANALIZI', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text('• Antrenman Sikliginda %15 Artis', 25, yPos);
+            yPos += 8;
+            doc.text('• En Cok Gelisim Gosteren: Gogus Kaslari', 25, yPos);
+            yPos += 8;
+            doc.text('• Hedef Kiloya %70 Yaklasim', 25, yPos);
+            yPos += 8;
+            doc.text('• Ortalama Antrenman Suresi: 75 dakika', 25, yPos);
+            yPos += 20;
+            
+            // Öğrenci Detayları
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('OGRENCI DETAYLARI', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            clients.forEach(function(client) {
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 30;
+                }
+                // Türkçe karakterleri temizle
+                var cleanName = client.name.replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                                          .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                                          .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                                          .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                                          .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                                          .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+                
+                doc.text('• ' + cleanName, 25, yPos);
+                yPos += 6;
+                doc.text('  E-posta: ' + client.email, 30, yPos);
+                yPos += 6;
+                doc.text('  Toplam Antrenman: ' + client.workouts, 30, yPos);
+                yPos += 6;
+                doc.text('  Son Antrenman: ' + new Date(client.lastWorkout).toLocaleDateString('tr-TR'), 30, yPos);
+                yPos += 12;
+            });
+            
+            // Yeni sayfa ekle
+            doc.addPage();
+            yPos = 30;
+            
+            // En Çok Yapılan Egzersizler
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('EN COK YAPILAN EGZERSIZLER', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            workouts.forEach(function(workout, index) {
+                // Egzersiz adlarındaki Türkçe karakterleri temizle
+                var cleanExercise = workout.exercise.replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                                                   .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                                                   .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                                                   .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                                                   .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                                                   .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+                
+                doc.text((index + 1) + '. ' + cleanExercise, 25, yPos);
+                yPos += 6;
+                doc.text('   ' + workout.sets + ' set x ' + workout.reps + ' tekrar', 30, yPos);
+                yPos += 6;
+                var weightText = workout.weight > 0 ? workout.weight + ' kg' : 'Vucut agirligi';
+                doc.text('   Agirlik: ' + weightText, 30, yPos);
+                yPos += 12;
+            });
+            
+            yPos += 10;
+            
+            // Öneriler
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('ONERILER', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            var recommendations = [
+                'Kardiyovaskuler antrenmanlari artirin',
+                'Beslenme takibi ekleyin',
+                'Dinlenme gunlerini ihmal etmeyin',
+                'Ilerleme fotograflari cekin'
+            ];
+            
+            recommendations.forEach(function(rec) {
+                doc.text('• ' + rec, 25, yPos);
+                yPos += 8;
+            });
+            
+            // Program Özeti
+            yPos += 10;
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('PROGRAM OZETI', 20, yPos);
+            yPos += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text('• Aktif Program Sayisi: ' + programs.length, 25, yPos);
+            yPos += 8;
+            doc.text('• En Populer Program Turu: Kuvvet Antrenmanı', 25, yPos);
+            yPos += 8;
+            doc.text('• Ortalama Program Suresi: 6 hafta', 25, yPos);
+            
+            // Alt bilgi
+            yPos = 270;
+            doc.setFontSize(8);
+            doc.text('Bu rapor Personal Trainer App tarafindan otomatik olarak olusturulmustur.', 20, yPos);
+            doc.text('Rapor ID: PT-' + Date.now(), 20, yPos + 5);
+            doc.text('Olusturulma: ' + new Date().toLocaleString('tr-TR'), 20, yPos + 10);
+            
+            // PDF'i indir
+            var fileName = 'Personal_Trainer_Raporu_' + new Date().toLocaleDateString('tr-TR').replace(/\./g, '_') + '.pdf';
+            doc.save(fileName);
+        }
+        
+        function generateReportContent() {
+            var today = new Date().toLocaleDateString('tr-TR');
+            var month = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+            
+            var clientDetails = clients.map(function(client) {
+                var cleanName = client.name.replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                                          .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                                          .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                                          .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                                          .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                                          .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+                return '\n• ' + cleanName + 
+                       '\n  - E-posta: ' + client.email +
+                       '\n  - Toplam Antrenman: ' + client.workouts +
+                       '\n  - Son Antrenman: ' + new Date(client.lastWorkout).toLocaleDateString('tr-TR');
+            }).join('');
+            
+            var workoutDetails = workouts.map(function(workout, index) {
+                var cleanExercise = workout.exercise.replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                                                   .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                                                   .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                                                   .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                                                   .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                                                   .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+                var weightText = workout.weight > 0 ? workout.weight + ' kg' : 'Vucut agirligi';
+                return '\n' + (index + 1) + '. ' + cleanExercise +
+                       '\n   - ' + workout.sets + ' set x ' + workout.reps + ' tekrar' +
+                       '\n   - Agirlik: ' + weightText;
+            }).join('');
+            
+            return 'PERSONAL TRAINER RAPORU\n' +
+                   month + '\n' +
+                   'Rapor Tarihi: ' + today + '\n\n' +
+                   '═══════════════════════════════════════\n\n' +
+                   '� GENEL İSTATİSTİKLER\n' +
+                   '═══════════════════════════════════════\n' +
+                   '• Toplam Öğrenci Sayısı: ' + clients.length + '\n' +
+                   '• Bu Ayki Antrenman Sayısı: ' + (workouts.length * 4) + '\n' +
+                   '• Haftalık Ortalama: ' + Math.round(workouts.length * 4 / 4) + ' antrenman\n' +
+                   '• En Aktif Gün: Pazartesi\n\n' +
+                   '📈 İLERLEME ANALİZİ\n' +
+                   '═══════════════════════════════════════\n' +
+                   '• Antrenman Sıklığında %15 Artış\n' +
+                   '• En Çok Gelişim Gösteren: Göğüs Kasları\n' +
+                   '• Hedef Kiloya %70 Yaklaşım\n' +
+                   '• Ortalama Antrenman Süresi: 75 dakika\n\n' +
+                   '� ÖĞRENCİ DETAYLARI\n' +
+                   '═══════════════════════════════════════' +
+                   clientDetails + '\n\n' +
+                   '💪 EN ÇOK YAPILAN EGZERSİZLER\n' +
+                   '═══════════════════════════════════════' +
+                   workoutDetails + '\n\n' +
+                   '📋 PROGRAM ÖZETİ\n' +
+                   '═══════════════════════════════════════\n' +
+                   '• Aktif Program Sayısı: ' + programs.length + '\n' +
+                   '• En Popüler Program Türü: Kuvvet Antrenmanı\n' +
+                   '• Ortalama Program Süresi: 6 hafta\n\n' +
+                   '🎯 ÖNERİLER\n' +
+                   '═══════════════════════════════════════\n' +
+                   '• Kardiyovasküler antrenmanları artırın\n' +
+                   '• Beslenme takibi ekleyin\n' +
+                   '• Dinlenme günlerini ihmal etmeyin\n' +
+                   '• İlerleme fotoğrafları çekin\n\n' +
+                   '═══════════════════════════════════════\n' +
+                   'Bu rapor Personal Trainer App tarafından\n' +
+                   'otomatik olarak oluşturulmuştur.\n\n' +
+                   'Rapor ID: PT-' + Date.now() + '\n' +
+                   'Oluşturulma: ' + new Date().toLocaleString('tr-TR') + '\n' +
+                   '═══════════════════════════════════════';
+        }
+        
+        function downloadTextReport(content) {
+            // Metin dosyası olarak indir (fallback)
+            var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            var url = window.URL.createObjectURL(blob);
+            
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'Personal_Trainer_Raporu_' + new Date().toLocaleDateString('tr-TR').replace(/\./g, '_') + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Modal dışına tıklandığında kapat
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Sayfa yüklendiğinde animasyonlar
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    card.style.transition = 'all 0.5s ease';
+                    
+                    setTimeout(() => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, 100);
+                }, index * 100);
+            });
+            
+            // İlk yüklemede verileri güncelle
+            updateHomeStats();
+        });
+    </script>
+</body>
+</html>
