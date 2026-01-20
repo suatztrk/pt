@@ -11,18 +11,6 @@ plugins:
 # SEO ayarları
 lang: tr
 author: Personal Trainer App
-twitter:
-  username: personaltrainerapp
-  card: summary_large_image
-
-# Sosyal medya
-social:
-  name: Personal Trainer App
-  links:
-    - https://github.com/suatztrk/pt
-
-# Tema
-theme: minima
 
 # Exclude files
 exclude:
@@ -32,3 +20,9 @@ exclude:
   - README.md
   - KURULUM.md
   - GITHUB_YUKLEME.md
+  - src/
+  - babel.config.js
+  - metro.config.js
+  - tsconfig.json
+  - App.tsx
+  - index.js
