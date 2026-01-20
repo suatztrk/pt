@@ -780,334 +780,312 @@
     </div>
     
     <script>
-        // Hibrit Veritabanı Yönetimi (IndexedDB + localStorage fallback)
-        let db;
-        let useLocalStorage = false;
-        const DB_NAME = 'PersonalTrainerDB';
-        const DB_VERSION = 1;
+        // Güvenilir localStorage Veritabanı Sistemi (Netlify Uyumlu)
+        let useLocalStorage = true; // Netlify için localStorage öncelikli
         const STORAGE_PREFIX = 'PT_';
 
-        // Veritabanını başlat
+        // Veritabanını başlat - localStorage öncelikli
         function initDatabase() {
             return new Promise((resolve, reject) => {
-                // IndexedDB desteği kontrolü
-                if (!window.indexedDB) {
-                    console.warn('IndexedDB desteklenmiyor, localStorage kullanılacak');
-                    useLocalStorage = true;
-                    initLocalStorage();
-                    resolve(true);
-                    return;
-                }
+                try {
+                    // Netlify deployment kontrolü
+                    const isNetlify = window.location.hostname.includes('netlify') || 
+                                     window.location.hostname.includes('github.io') ||
+                                     !window.location.hostname.includes('localhost');
+                    
+                    if (isNetlify) {
+                        console.log('Netlify/Production ortamı tespit edildi, localStorage kullanılacak');
+                        useLocalStorage = true;
+                        initLocalStorage();
+                        resolve(true);
+                        return;
+                    }
 
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                
-                request.onerror = (event) => {
-                    console.warn('IndexedDB hatası, localStorage\'a geçiliyor:', event.target.error);
+                    // Yerel geliştirme için IndexedDB dene, başarısız olursa localStorage
+                    if (window.indexedDB && !isNetlify) {
+                        console.log('IndexedDB deneniyor...');
+                        const request = indexedDB.open('PersonalTrainerDB', 1);
+                        
+                        const timeout = setTimeout(() => {
+                            console.warn('IndexedDB timeout, localStorage\'a geçiliyor');
+                            useLocalStorage = true;
+                            initLocalStorage();
+                            resolve(true);
+                        }, 3000); // 3 saniye timeout
+                        
+                        request.onerror = () => {
+                            clearTimeout(timeout);
+                            console.warn('IndexedDB hatası, localStorage\'a geçiliyor');
+                            useLocalStorage = true;
+                            initLocalStorage();
+                            resolve(true);
+                        };
+                        
+                        request.onsuccess = () => {
+                            clearTimeout(timeout);
+                            console.log('IndexedDB başarılı ama localStorage tercih ediliyor');
+                            useLocalStorage = true; // Yine de localStorage kullan
+                            initLocalStorage();
+                            resolve(true);
+                        };
+                    } else {
+                        console.log('IndexedDB desteklenmiyor, localStorage kullanılacak');
+                        useLocalStorage = true;
+                        initLocalStorage();
+                        resolve(true);
+                    }
+                } catch (error) {
+                    console.error('Database init hatası:', error);
                     useLocalStorage = true;
                     initLocalStorage();
                     resolve(true);
-                };
-                
-                request.onsuccess = () => {
-                    db = request.result;
-                    console.log('IndexedDB başarıyla başlatıldı');
-                    resolve(db);
-                };
-                
-                request.onupgradeneeded = (event) => {
-                    db = event.target.result;
-                    
-                    // Öğrenciler tablosu
-                    if (!db.objectStoreNames.contains('clients')) {
-                        const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
-                        clientStore.createIndex('email', 'email', { unique: false });
-                        clientStore.createIndex('name', 'name', { unique: false });
-                    }
-                    
-                    // Antrenmanlar tablosu
-                    if (!db.objectStoreNames.contains('workouts')) {
-                        const workoutStore = db.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true });
-                        workoutStore.createIndex('date', 'date', { unique: false });
-                        workoutStore.createIndex('exercise', 'exercise', { unique: false });
-                    }
-                    
-                    // Programlar tablosu
-                    if (!db.objectStoreNames.contains('programs')) {
-                        const programStore = db.createObjectStore('programs', { keyPath: 'id', autoIncrement: true });
-                        programStore.createIndex('name', 'name', { unique: false });
-                    }
-                    
-                    // Vücut ölçümleri tablosu
-                    if (!db.objectStoreNames.contains('measurements')) {
-                        const measurementStore = db.createObjectStore('measurements', { keyPath: 'id', autoIncrement: true });
-                        measurementStore.createIndex('date', 'date', { unique: false });
-                        measurementStore.createIndex('clientId', 'clientId', { unique: false });
-                    }
-                    
-                    // Ayarlar tablosu
-                    if (!db.objectStoreNames.contains('settings')) {
-                        const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
-                    }
-                };
+                }
             });
         }
 
-        // localStorage başlatma
+        // localStorage başlatma ve yönetimi
         function initLocalStorage() {
-            console.log('localStorage veritabanı modu aktif');
-            // localStorage için gerekli yapıları oluştur
-            if (!localStorage.getItem(STORAGE_PREFIX + 'clients')) {
-                localStorage.setItem(STORAGE_PREFIX + 'clients', JSON.stringify([]));
-            }
-            if (!localStorage.getItem(STORAGE_PREFIX + 'workouts')) {
-                localStorage.setItem(STORAGE_PREFIX + 'workouts', JSON.stringify([]));
-            }
-            if (!localStorage.getItem(STORAGE_PREFIX + 'programs')) {
-                localStorage.setItem(STORAGE_PREFIX + 'programs', JSON.stringify([]));
-            }
-            if (!localStorage.getItem(STORAGE_PREFIX + 'measurements')) {
-                localStorage.setItem(STORAGE_PREFIX + 'measurements', JSON.stringify([]));
-            }
+            console.log('localStorage veritabanı sistemi başlatılıyor...');
+            
+            // Tablolar için boş diziler oluştur
+            const tables = ['clients', 'workouts', 'programs', 'measurements'];
+            tables.forEach(table => {
+                if (!localStorage.getItem(STORAGE_PREFIX + table)) {
+                    localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify([]));
+                    console.log(`${table} tablosu oluşturuldu`);
+                }
+            });
+
+            // Ayarlar için boş obje
             if (!localStorage.getItem(STORAGE_PREFIX + 'settings')) {
                 localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify({}));
+                console.log('Settings tablosu oluşturuldu');
             }
+
+            // ID sayacı
             if (!localStorage.getItem(STORAGE_PREFIX + 'nextId')) {
                 localStorage.setItem(STORAGE_PREFIX + 'nextId', '1');
+                console.log('ID sayacı başlatıldı');
             }
+            
+            console.log('localStorage veritabanı hazır!');
         }
 
         // localStorage yardımcı fonksiyonları
         function getNextId() {
-            if (useLocalStorage) {
-                const nextId = parseInt(localStorage.getItem(STORAGE_PREFIX + 'nextId') || '1');
-                localStorage.setItem(STORAGE_PREFIX + 'nextId', (nextId + 1).toString());
-                return nextId;
-            }
-            return null;
+            const nextId = parseInt(localStorage.getItem(STORAGE_PREFIX + 'nextId') || '1');
+            localStorage.setItem(STORAGE_PREFIX + 'nextId', (nextId + 1).toString());
+            return nextId;
         }
 
         function saveToLocalStorage(table, data) {
-            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
-            items.push(data);
-            localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+            try {
+                const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+                items.push(data);
+                localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+                console.log(`${table} tablosuna veri eklendi:`, data);
+                return true;
+            } catch (error) {
+                console.error(`${table} tablosuna veri eklenirken hata:`, error);
+                return false;
+            }
         }
 
         function getFromLocalStorage(table) {
-            return JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+            try {
+                const data = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+                console.log(`${table} tablosundan ${data.length} kayıt okundu`);
+                return data;
+            } catch (error) {
+                console.error(`${table} tablosu okunurken hata:`, error);
+                return [];
+            }
         }
 
         function updateInLocalStorage(table, updatedItem) {
-            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
-            const index = items.findIndex(item => item.id === updatedItem.id);
-            if (index !== -1) {
-                items[index] = updatedItem;
-                localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+            try {
+                const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+                const index = items.findIndex(item => item.id === updatedItem.id);
+                if (index !== -1) {
+                    items[index] = updatedItem;
+                    localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+                    console.log(`${table} tablosunda güncelleme yapıldı:`, updatedItem);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error(`${table} tablosu güncellenirken hata:`, error);
+                return false;
             }
         }
 
         function deleteFromLocalStorage(table, id) {
-            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
-            const filteredItems = items.filter(item => item.id !== id);
-            localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(filteredItems));
+            try {
+                const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+                const filteredItems = items.filter(item => item.id !== id);
+                localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(filteredItems));
+                console.log(`${table} tablosundan ID ${id} silindi`);
+                return true;
+            } catch (error) {
+                console.error(`${table} tablosundan silme hatası:`, error);
+                return false;
+            }
         }
 
-        // Hibrit Veritabanı İşlemleri
+        // Basitleştirilmiş Veritabanı İşlemleri (Sadece localStorage)
         const DatabaseManager = {
             // Öğrenci işlemleri
             async addClient(client) {
-                if (useLocalStorage) {
+                try {
                     client.id = getNextId();
                     client.createdAt = new Date().toISOString();
                     client.lastWorkout = new Date().toISOString().split('T')[0];
                     client.workouts = 0;
-                    saveToLocalStorage('clients', client);
-                    return Promise.resolve(client);
-                } else {
-                    const transaction = db.transaction(['clients'], 'readwrite');
-                    const store = transaction.objectStore('clients');
-                    client.createdAt = new Date().toISOString();
-                    client.lastWorkout = new Date().toISOString().split('T')[0];
-                    client.workouts = 0;
-                    return store.add(client);
+                    
+                    const success = saveToLocalStorage('clients', client);
+                    if (success) {
+                        return Promise.resolve(client);
+                    } else {
+                        throw new Error('Öğrenci kaydedilemedi');
+                    }
+                } catch (error) {
+                    console.error('Öğrenci ekleme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             async getAllClients() {
-                if (useLocalStorage) {
-                    return Promise.resolve(getFromLocalStorage('clients'));
-                } else {
-                    const transaction = db.transaction(['clients'], 'readonly');
-                    const store = transaction.objectStore('clients');
-                    return new Promise((resolve, reject) => {
-                        const request = store.getAll();
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
-                    });
+                try {
+                    const clients = getFromLocalStorage('clients');
+                    return Promise.resolve(clients);
+                } catch (error) {
+                    console.error('Öğrenciler yüklenirken hata:', error);
+                    return Promise.resolve([]);
                 }
             },
             
             async updateClient(client) {
-                if (useLocalStorage) {
-                    updateInLocalStorage('clients', client);
-                    return Promise.resolve(client);
-                } else {
-                    const transaction = db.transaction(['clients'], 'readwrite');
-                    const store = transaction.objectStore('clients');
-                    return store.put(client);
+                try {
+                    client.updatedAt = new Date().toISOString();
+                    const success = updateInLocalStorage('clients', client);
+                    if (success) {
+                        return Promise.resolve(client);
+                    } else {
+                        throw new Error('Öğrenci güncellenemedi');
+                    }
+                } catch (error) {
+                    console.error('Öğrenci güncelleme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             async deleteClient(id) {
-                if (useLocalStorage) {
-                    deleteFromLocalStorage('clients', id);
-                    return Promise.resolve();
-                } else {
-                    const transaction = db.transaction(['clients'], 'readwrite');
-                    const store = transaction.objectStore('clients');
-                    return store.delete(id);
+                try {
+                    const success = deleteFromLocalStorage('clients', id);
+                    if (success) {
+                        return Promise.resolve();
+                    } else {
+                        throw new Error('Öğrenci silinemedi');
+                    }
+                } catch (error) {
+                    console.error('Öğrenci silme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             // Antrenman işlemleri
             async addWorkout(workout) {
-                if (useLocalStorage) {
+                try {
                     workout.id = getNextId();
                     workout.createdAt = new Date().toISOString();
-                    saveToLocalStorage('workouts', workout);
-                    return Promise.resolve(workout);
-                } else {
-                    const transaction = db.transaction(['workouts'], 'readwrite');
-                    const store = transaction.objectStore('workouts');
-                    workout.createdAt = new Date().toISOString();
-                    return store.add(workout);
+                    
+                    const success = saveToLocalStorage('workouts', workout);
+                    if (success) {
+                        return Promise.resolve(workout);
+                    } else {
+                        throw new Error('Antrenman kaydedilemedi');
+                    }
+                } catch (error) {
+                    console.error('Antrenman ekleme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             async getAllWorkouts() {
-                if (useLocalStorage) {
-                    return Promise.resolve(getFromLocalStorage('workouts'));
-                } else {
-                    const transaction = db.transaction(['workouts'], 'readonly');
-                    const store = transaction.objectStore('workouts');
-                    return new Promise((resolve, reject) => {
-                        const request = store.getAll();
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
-                    });
-                }
-            },
-            
-            async getWorkoutsByDate(date) {
-                if (useLocalStorage) {
+                try {
                     const workouts = getFromLocalStorage('workouts');
-                    return Promise.resolve(workouts.filter(w => w.date === date));
-                } else {
-                    const transaction = db.transaction(['workouts'], 'readonly');
-                    const store = transaction.objectStore('workouts');
-                    const index = store.index('date');
-                    return new Promise((resolve, reject) => {
-                        const request = index.getAll(date);
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
-                    });
+                    return Promise.resolve(workouts);
+                } catch (error) {
+                    console.error('Antrenmanlar yüklenirken hata:', error);
+                    return Promise.resolve([]);
                 }
             },
             
             async deleteWorkout(id) {
-                if (useLocalStorage) {
-                    deleteFromLocalStorage('workouts', id);
-                    return Promise.resolve();
-                } else {
-                    const transaction = db.transaction(['workouts'], 'readwrite');
-                    const store = transaction.objectStore('workouts');
-                    return store.delete(id);
+                try {
+                    const success = deleteFromLocalStorage('workouts', id);
+                    if (success) {
+                        return Promise.resolve();
+                    } else {
+                        throw new Error('Antrenman silinemedi');
+                    }
+                } catch (error) {
+                    console.error('Antrenman silme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             // Program işlemleri
             async addProgram(program) {
-                if (useLocalStorage) {
+                try {
                     program.id = getNextId();
                     program.createdAt = new Date().toISOString();
-                    saveToLocalStorage('programs', program);
-                    return Promise.resolve(program);
-                } else {
-                    const transaction = db.transaction(['programs'], 'readwrite');
-                    const store = transaction.objectStore('programs');
-                    program.createdAt = new Date().toISOString();
-                    return store.add(program);
+                    
+                    const success = saveToLocalStorage('programs', program);
+                    if (success) {
+                        return Promise.resolve(program);
+                    } else {
+                        throw new Error('Program kaydedilemedi');
+                    }
+                } catch (error) {
+                    console.error('Program ekleme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             async getAllPrograms() {
-                if (useLocalStorage) {
-                    return Promise.resolve(getFromLocalStorage('programs'));
-                } else {
-                    const transaction = db.transaction(['programs'], 'readonly');
-                    const store = transaction.objectStore('programs');
-                    return new Promise((resolve, reject) => {
-                        const request = store.getAll();
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
-                    });
-                }
-            },
-            
-            // Ölçüm işlemleri
-            async addMeasurement(measurement) {
-                if (useLocalStorage) {
-                    measurement.id = getNextId();
-                    measurement.createdAt = new Date().toISOString();
-                    saveToLocalStorage('measurements', measurement);
-                    return Promise.resolve(measurement);
-                } else {
-                    const transaction = db.transaction(['measurements'], 'readwrite');
-                    const store = transaction.objectStore('measurements');
-                    measurement.createdAt = new Date().toISOString();
-                    return store.add(measurement);
-                }
-            },
-            
-            async getAllMeasurements() {
-                if (useLocalStorage) {
-                    return Promise.resolve(getFromLocalStorage('measurements'));
-                } else {
-                    const transaction = db.transaction(['measurements'], 'readonly');
-                    const store = transaction.objectStore('measurements');
-                    return new Promise((resolve, reject) => {
-                        const request = store.getAll();
-                        request.onsuccess = () => resolve(request.result);
-                        request.onerror = () => reject(request.error);
-                    });
+                try {
+                    const programs = getFromLocalStorage('programs');
+                    return Promise.resolve(programs);
+                } catch (error) {
+                    console.error('Programlar yüklenirken hata:', error);
+                    return Promise.resolve([]);
                 }
             },
             
             // Ayarlar işlemleri
             async saveSetting(key, value) {
-                if (useLocalStorage) {
+                try {
                     const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
                     settings[key] = { value: value, updatedAt: new Date().toISOString() };
                     localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify(settings));
+                    console.log(`Ayar kaydedildi: ${key} = ${value}`);
                     return Promise.resolve();
-                } else {
-                    const transaction = db.transaction(['settings'], 'readwrite');
-                    const store = transaction.objectStore('settings');
-                    return store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
+                } catch (error) {
+                    console.error('Ayar kaydetme hatası:', error);
+                    return Promise.reject(error);
                 }
             },
             
             async getSetting(key) {
-                if (useLocalStorage) {
+                try {
                     const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
-                    return Promise.resolve(settings[key] ? settings[key].value : null);
-                } else {
-                    const transaction = db.transaction(['settings'], 'readonly');
-                    const store = transaction.objectStore('settings');
-                    return new Promise((resolve, reject) => {
-                        const request = store.get(key);
-                        request.onsuccess = () => resolve(request.result ? request.result.value : null);
-                        request.onerror = () => reject(request.error);
-                    });
+                    const value = settings[key] ? settings[key].value : null;
+                    console.log(`Ayar okundu: ${key} = ${value}`);
+                    return Promise.resolve(value);
+                } catch (error) {
+                    console.error('Ayar okuma hatası:', error);
+                    return Promise.resolve(null);
                 }
             }
         };
@@ -1283,12 +1261,11 @@
             // Hoş geldiniz mesajını güncelle
             const welcomeCard = document.querySelector('.card p');
             if (welcomeCard) {
-                const storageInfo = useLocalStorage ? 'localStorage' : 'IndexedDB';
                 welcomeCard.innerHTML = `
                     Bugün <strong>${new Date().toLocaleDateString('tr-TR')}</strong> tarihinde 
                     <strong>${todayWorkouts}</strong> antrenman kaydedildi.
                     <br><small>Toplam <strong>${clients.length}</strong> öğrenci, <strong>${workouts.length}</strong> antrenman kaydı mevcut.</small>
-                    <br><small style="color: #6200ee;">💾 Veritabanı: ${storageInfo} aktif</small>
+                    <br><small style="color: #6200ee;">💾 Netlify uyumlu localStorage veritabanı aktif</small>
                 `;
             }
         }
@@ -1962,15 +1939,9 @@
                 // Veritabanını başlat
                 await initDatabase();
                 
-                if (useLocalStorage) {
-                    console.log('localStorage veritabanı modu aktif');
-                    document.getElementById('db-status').textContent = '💾 localStorage: Aktif';
-                    showNotification('Veritabanı (localStorage) başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'info');
-                } else {
-                    console.log('IndexedDB veritabanı modu aktif');
-                    document.getElementById('db-status').textContent = '💾 IndexedDB: Aktif';
-                    showNotification('Veritabanı (IndexedDB) başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'success');
-                }
+                console.log('localStorage veritabanı sistemi aktif');
+                document.getElementById('db-status').textContent = '💾 localStorage: Aktif ✅';
+                showNotification('Netlify uyumlu veritabanı başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'success');
                 
                 // Verileri yükle
                 await loadDataFromDatabase();
@@ -1994,30 +1965,19 @@
                 // Netlify deployment için özel mesaj
                 if (window.location.hostname.includes('netlify')) {
                     setTimeout(() => {
-                        showNotification('Netlify deployment aktif! Veriler localStorage ile korunuyor.', 'info');
+                        showNotification('🚀 Netlify deployment başarılı! Database localStorage ile çalışıyor.', 'info');
                     }, 2000);
                 }
                 
             } catch (error) {
                 console.error('Uygulama başlatma hatası:', error);
-                document.getElementById('db-status').textContent = '💾 Hata: Başlatılamadı';
-                showNotification('Veritabanı başlatılamadı! Lütfen sayfayı yenileyin.', 'error');
+                document.getElementById('db-status').textContent = '💾 Hata: Başlatılamadı ❌';
+                showNotification('Veritabanı başlatılamadı! Sayfa yenileniyor...', 'error');
                 
-                // Son çare olarak localStorage'ı dene
-                if (!useLocalStorage) {
-                    console.log('Son çare localStorage deneniyor...');
-                    useLocalStorage = true;
-                    try {
-                        initLocalStorage();
-                        await loadDataFromDatabase();
-                        document.getElementById('db-status').textContent = '💾 localStorage: Yedek Aktif';
-                        showNotification('Yedek veritabanı (localStorage) aktif edildi!', 'info');
-                    } catch (fallbackError) {
-                        console.error('localStorage fallback hatası:', fallbackError);
-                        document.getElementById('db-status').textContent = '💾 Hata: Çalışmıyor';
-                        showNotification('Hiçbir veritabanı sistemi çalışmıyor!', 'error');
-                    }
-                }
+                // Hata durumunda sayfayı yenile
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
             }
         });
     </script>
