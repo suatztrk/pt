@@ -763,5 +763,105 @@
     
     <!-- JavaScript dosyasını yükle -->
     <script src="ptanalizer.js"></script>
+    
+    <!-- Kritik fonksiyonlar - Inline backup -->
+    <script>
+        // Backup fonksiyonlar - eğer external JS yüklenmezse
+        if (typeof openModal === 'undefined') {
+            console.log('🔧 External JS yüklenemedi, inline backup aktif');
+            
+            function openModal(modalType) {
+                console.log('🔧 Inline Modal açılıyor:', modalType);
+                let modalId;
+                switch(modalType) {
+                    case 'addClient':
+                        modalId = 'addClientModal';
+                        break;
+                    case 'addWorkout':
+                        modalId = 'addWorkoutModal';
+                        break;
+                    case 'createProgram':
+                        modalId = 'createProgramModal';
+                        break;
+                    case 'editProfile':
+                        modalId = 'editProfileModal';
+                        break;
+                    case 'settings':
+                        modalId = 'settingsModal';
+                        break;
+                }
+                
+                if (modalId) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.style.display = 'block';
+                        console.log('✅ Inline Modal açıldı:', modalId);
+                    } else {
+                        console.error('❌ Modal bulunamadı:', modalId);
+                    }
+                }
+            }
+            
+            function closeModal(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+                const form = document.querySelector(`#${modalId} form`);
+                if (form) form.reset();
+                const successMsg = document.querySelector(`#${modalId} .success-message`);
+                if (successMsg) successMsg.style.display = 'none';
+            }
+            
+            function addNew() {
+                openModal('addClient');
+            }
+            
+            function showNotification(message, type = 'success') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.classList.add('show'), 100);
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 300);
+                }, 4000);
+            }
+            
+            function addClient(event) {
+                event.preventDefault();
+                const name = document.getElementById('clientName').value.trim();
+                const email = document.getElementById('clientEmail').value.trim();
+                
+                if (!name || !email) {
+                    showNotification('Ad Soyad ve E-posta zorunludur!', 'error');
+                    return;
+                }
+                
+                showNotification(name + ' başarıyla eklendi! (Demo mode)', 'success');
+                setTimeout(() => closeModal('addClientModal'), 2000);
+            }
+            
+            // Modal dışına tıklandığında kapat
+            window.onclick = function(event) {
+                const modals = document.querySelectorAll('.modal');
+                modals.forEach(modal => {
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Sayfa yüklendiğinde
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🚀 PTAnalizer inline backup başlatıldı');
+                document.getElementById('db-status').textContent = '💾 Demo Mode: Aktif ✅';
+                showNotification('PTAnalizer demo mode aktif! Butonlar çalışıyor.', 'info');
+            });
+        }
+    </script>
 </body>
 </html>
