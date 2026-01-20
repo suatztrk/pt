@@ -1520,6 +1520,7 @@
         }
         
         function openModal(modalType) {
+            console.log('🔧 Modal açılıyor:', modalType);
             let modalId;
             switch(modalType) {
                 case 'addClient':
@@ -1539,8 +1540,15 @@
                     break;
             }
             
+            console.log('🔧 Modal ID:', modalId);
             if (modalId) {
-                document.getElementById(modalId).style.display = 'block';
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.style.display = 'block';
+                    console.log('✅ Modal açıldı:', modalId);
+                } else {
+                    console.error('❌ Modal bulunamadı:', modalId);
+                }
             }
         }
         
@@ -1581,6 +1589,7 @@
         }
         
         function addClient(event) {
+            console.log('🔧 Müşteri ekleme başladı');
             event.preventDefault();
             
             try {
@@ -1592,13 +1601,17 @@
                 const height = document.getElementById('clientHeight').value;
                 const weight = document.getElementById('clientWeight').value;
                 
+                console.log('🔧 Form verileri:', { name, email, phone, goal });
+                
                 // Zorunlu alanları kontrol et
                 if (!name) {
+                    console.log('❌ Ad Soyad eksik');
                     showNotification('Ad Soyad alanı zorunludur!', 'error');
                     return;
                 }
                 
                 if (!email) {
+                    console.log('❌ Email eksik');
                     showNotification('E-posta alanı zorunludur!', 'error');
                     return;
                 }
@@ -1606,11 +1619,12 @@
                 // Email formatını kontrol et
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(email)) {
+                    console.log('❌ Email formatı hatalı');
                     showNotification('Geçerli bir e-posta adresi girin!', 'error');
                     return;
                 }
                 
-                console.log('Öğrenci ekleniyor:', { name, email, phone, goal });
+                console.log('✅ Validasyon başarılı, veritabanına kaydediliyor...');
                 
                 const newClient = {
                     name: name,
@@ -1623,7 +1637,7 @@
                 
                 // Veritabanına kaydet
                 DatabaseManager.addClient(newClient).then((savedClient) => {
-                    console.log('Öğrenci başarıyla kaydedildi:', savedClient);
+                    console.log('✅ Müşteri başarıyla kaydedildi:', savedClient);
                     
                     // Success mesajını göster
                     const successMsg = document.getElementById('clientSuccess');
@@ -1636,22 +1650,23 @@
                     
                     // Verileri yeniden yükle
                     loadDataFromDatabase().then(() => {
+                        console.log('✅ Veriler yeniden yüklendi');
                         // 2 saniye sonra modal'ı kapat
                         setTimeout(() => {
                             closeModal('addClientModal');
                         }, 2000);
                     }).catch(loadError => {
-                        console.error('Veri yükleme hatası:', loadError);
+                        console.error('❌ Veri yükleme hatası:', loadError);
                         showNotification('Veriler yüklenirken hata oluştu!', 'error');
                     });
                     
                 }).catch(error => {
-                    console.error('Öğrenci ekleme hatası:', error);
-                    showNotification('Öğrenci eklenirken hata oluştu: ' + error.message, 'error');
+                    console.error('❌ Müşteri ekleme hatası:', error);
+                    showNotification('Müşteri eklenirken hata oluştu: ' + error.message, 'error');
                 });
                 
             } catch (error) {
-                console.error('Form işleme hatası:', error);
+                console.error('❌ Form işleme hatası:', error);
                 showNotification('Form işlenirken hata oluştu: ' + error.message, 'error');
             }
         }
@@ -2110,6 +2125,7 @@
         
         // Sayfa yüklendiğinde veritabanını başlat
         window.addEventListener('load', async function() {
+            console.log('🚀 PTAnalizer başlatılıyor...');
             try {
                 // Veritabanını başlat
                 await initDatabase();
@@ -2125,8 +2141,9 @@
                 }
                 
                 // Verileri yükle
+                console.log('📊 Veriler yükleniyor...');
                 await loadDataFromDatabase();
-                console.log('Veriler yüklendi');
+                console.log('✅ Veriler yüklendi');
                 
                 // Animasyonları başlat
                 const cards = document.querySelectorAll('.card');
@@ -2154,8 +2171,10 @@
                     }, 2000);
                 }
                 
+                console.log('🎉 PTAnalizer başarıyla başlatıldı!');
+                
             } catch (error) {
-                console.error('Uygulama başlatma hatası:', error);
+                console.error('❌ Uygulama başlatma hatası:', error);
                 document.getElementById('db-status').textContent = '💾 Hata: Başlatılamadı ❌';
                 showNotification('Veritabanı başlatılamadı! Sayfa yenileniyor...', 'error');
                 
