@@ -1,12 +1,19 @@
-# Netlify redirects
+# Netlify redirects - Spesifik yönlendirmeler
 /app /demo.html 200
 /demo /demo.html 200
 /uygulama /demo.html 200
-# Don't redirect static files
+
+# Static dosyalar - hiç yönlendirme yapma
+/demo.html /demo.html 200
+/app.html /app.html 200
+/ptanalizer.js /ptanalizer.js 200
 /*.js /:splat 200
 /*.css /:splat 200
 /*.png /:splat 200
 /*.jpg /:splat 200
 /*.ico /:splat 200
-# Redirect everything else to index.html
-/* /index.html 200
+/*.html /:splat 200
+
+# Sadece root ve bilinmeyen path'leri index.html'e yönlendir
+/ /index.html 200
+/index /index.html 200
