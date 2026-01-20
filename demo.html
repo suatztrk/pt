@@ -8,24 +8,27 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js';
         
-        // Firebase yapılandırması - PTAnalizer
-        // GERÇEK CONFIG İÇİN: Firebase Console > Proje Ayarları > Web App Config
+        // Firebase yapılandırması - PTAnalizer (GERÇEK CONFIG)
         const firebaseConfig = {
-            apiKey: "AIzaSyC_PTAnalizer_API_KEY_BURAYA",
+            apiKey: "AIzaSyD_SPuPryL8ey9yNTcrKdtbC-iaTMVhR-4",
             authDomain: "ptanalizer.firebaseapp.com",
             projectId: "ptanalizer",
-            storageBucket: "ptanalizer.appspot.com",
-            messagingSenderId: "987654321098",
-            appId: "1:987654321098:web:ptanalizer123456789"
+            storageBucket: "ptanalizer.firebasestorage.app",
+            messagingSenderId: "496883578175",
+            appId: "1:496883578175:web:470cacfc2f071151618f8a",
+            measurementId: "G-R8W6YVX2RT"
         };
         
         // Firebase'i başlat
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const analytics = getAnalytics(app);
         
         // Global olarak erişilebilir hale getir
         window.firebaseDB = db;
+        window.firebaseAnalytics = analytics;
         window.firebaseModules = {
             collection,
             addDoc,
@@ -38,7 +41,7 @@
             orderBy
         };
         
-        console.log('🔥 PTAnalizer Firebase başlatıldı');
+        console.log('🔥 PTAnalizer Firebase başlatıldı (Analytics dahil)');
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
