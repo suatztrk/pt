@@ -2,4 +2,11 @@
 /app /demo.html 200
 /demo /demo.html 200
 /uygulama /demo.html 200
+# Don't redirect static files
+/*.js /:splat 200
+/*.css /:splat 200
+/*.png /:splat 200
+/*.jpg /:splat 200
+/*.ico /:splat 200
+# Redirect everything else to index.html
 /* /index.html 200
