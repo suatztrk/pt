@@ -314,6 +314,27 @@
             transform: translateX(0);
         }
         
+        .notification.error {
+            background: #d32f2f;
+        }
+        
+        .notification.info {
+            background: #1976d2;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(98, 0, 238, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 999;
+            opacity: 0.8;
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -355,7 +376,7 @@
         <div id="home" class="tab-content">
             <div class="card">
                 <h3>Hoş Geldiniz! 👋</h3>
-                <p>Bugün <strong>13 Ocak 2026</strong> tarihinde <strong>5</strong> antrenman planlanmış.</p>
+                <p>Bugün <strong>20 Ocak 2026</strong> tarihinde <strong>0</strong> antrenman kaydedildi.</p>
             </div>
             
             <div class="stats-grid">
@@ -535,6 +556,10 @@
     </div>
     
     <button class="fab" onclick="addNew()">+</button>
+    
+    <div class="status-indicator" id="db-status">
+        💾 Veritabanı: Yükleniyor...
+    </div>
     
     <!-- Modal'lar -->
     <!-- Öğrenci Ekleme Modal -->
@@ -755,19 +780,37 @@
     </div>
     
     <script>
-        // IndexedDB Veritabanı Yönetimi
+        // Hibrit Veritabanı Yönetimi (IndexedDB + localStorage fallback)
         let db;
+        let useLocalStorage = false;
         const DB_NAME = 'PersonalTrainerDB';
         const DB_VERSION = 1;
+        const STORAGE_PREFIX = 'PT_';
 
         // Veritabanını başlat
         function initDatabase() {
             return new Promise((resolve, reject) => {
+                // IndexedDB desteği kontrolü
+                if (!window.indexedDB) {
+                    console.warn('IndexedDB desteklenmiyor, localStorage kullanılacak');
+                    useLocalStorage = true;
+                    initLocalStorage();
+                    resolve(true);
+                    return;
+                }
+
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 
-                request.onerror = () => reject(request.error);
+                request.onerror = (event) => {
+                    console.warn('IndexedDB hatası, localStorage\'a geçiliyor:', event.target.error);
+                    useLocalStorage = true;
+                    initLocalStorage();
+                    resolve(true);
+                };
+                
                 request.onsuccess = () => {
                     db = request.result;
+                    console.log('IndexedDB başarıyla başlatıldı');
                     resolve(db);
                 };
                 
@@ -777,7 +820,7 @@
                     // Öğrenciler tablosu
                     if (!db.objectStoreNames.contains('clients')) {
                         const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
-                        clientStore.createIndex('email', 'email', { unique: true });
+                        clientStore.createIndex('email', 'email', { unique: false });
                         clientStore.createIndex('name', 'name', { unique: false });
                     }
                     
@@ -809,120 +852,263 @@
             });
         }
 
-        // Veritabanı işlemleri
+        // localStorage başlatma
+        function initLocalStorage() {
+            console.log('localStorage veritabanı modu aktif');
+            // localStorage için gerekli yapıları oluştur
+            if (!localStorage.getItem(STORAGE_PREFIX + 'clients')) {
+                localStorage.setItem(STORAGE_PREFIX + 'clients', JSON.stringify([]));
+            }
+            if (!localStorage.getItem(STORAGE_PREFIX + 'workouts')) {
+                localStorage.setItem(STORAGE_PREFIX + 'workouts', JSON.stringify([]));
+            }
+            if (!localStorage.getItem(STORAGE_PREFIX + 'programs')) {
+                localStorage.setItem(STORAGE_PREFIX + 'programs', JSON.stringify([]));
+            }
+            if (!localStorage.getItem(STORAGE_PREFIX + 'measurements')) {
+                localStorage.setItem(STORAGE_PREFIX + 'measurements', JSON.stringify([]));
+            }
+            if (!localStorage.getItem(STORAGE_PREFIX + 'settings')) {
+                localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify({}));
+            }
+            if (!localStorage.getItem(STORAGE_PREFIX + 'nextId')) {
+                localStorage.setItem(STORAGE_PREFIX + 'nextId', '1');
+            }
+        }
+
+        // localStorage yardımcı fonksiyonları
+        function getNextId() {
+            if (useLocalStorage) {
+                const nextId = parseInt(localStorage.getItem(STORAGE_PREFIX + 'nextId') || '1');
+                localStorage.setItem(STORAGE_PREFIX + 'nextId', (nextId + 1).toString());
+                return nextId;
+            }
+            return null;
+        }
+
+        function saveToLocalStorage(table, data) {
+            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+            items.push(data);
+            localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+        }
+
+        function getFromLocalStorage(table) {
+            return JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+        }
+
+        function updateInLocalStorage(table, updatedItem) {
+            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+            const index = items.findIndex(item => item.id === updatedItem.id);
+            if (index !== -1) {
+                items[index] = updatedItem;
+                localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(items));
+            }
+        }
+
+        function deleteFromLocalStorage(table, id) {
+            const items = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table) || '[]');
+            const filteredItems = items.filter(item => item.id !== id);
+            localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify(filteredItems));
+        }
+
+        // Hibrit Veritabanı İşlemleri
         const DatabaseManager = {
             // Öğrenci işlemleri
             async addClient(client) {
-                const transaction = db.transaction(['clients'], 'readwrite');
-                const store = transaction.objectStore('clients');
-                client.createdAt = new Date().toISOString();
-                client.lastWorkout = new Date().toISOString().split('T')[0];
-                client.workouts = 0;
-                return store.add(client);
+                if (useLocalStorage) {
+                    client.id = getNextId();
+                    client.createdAt = new Date().toISOString();
+                    client.lastWorkout = new Date().toISOString().split('T')[0];
+                    client.workouts = 0;
+                    saveToLocalStorage('clients', client);
+                    return Promise.resolve(client);
+                } else {
+                    const transaction = db.transaction(['clients'], 'readwrite');
+                    const store = transaction.objectStore('clients');
+                    client.createdAt = new Date().toISOString();
+                    client.lastWorkout = new Date().toISOString().split('T')[0];
+                    client.workouts = 0;
+                    return store.add(client);
+                }
             },
             
             async getAllClients() {
-                const transaction = db.transaction(['clients'], 'readonly');
-                const store = transaction.objectStore('clients');
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    return Promise.resolve(getFromLocalStorage('clients'));
+                } else {
+                    const transaction = db.transaction(['clients'], 'readonly');
+                    const store = transaction.objectStore('clients');
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             },
             
             async updateClient(client) {
-                const transaction = db.transaction(['clients'], 'readwrite');
-                const store = transaction.objectStore('clients');
-                return store.put(client);
+                if (useLocalStorage) {
+                    updateInLocalStorage('clients', client);
+                    return Promise.resolve(client);
+                } else {
+                    const transaction = db.transaction(['clients'], 'readwrite');
+                    const store = transaction.objectStore('clients');
+                    return store.put(client);
+                }
             },
             
             async deleteClient(id) {
-                const transaction = db.transaction(['clients'], 'readwrite');
-                const store = transaction.objectStore('clients');
-                return store.delete(id);
+                if (useLocalStorage) {
+                    deleteFromLocalStorage('clients', id);
+                    return Promise.resolve();
+                } else {
+                    const transaction = db.transaction(['clients'], 'readwrite');
+                    const store = transaction.objectStore('clients');
+                    return store.delete(id);
+                }
             },
             
             // Antrenman işlemleri
             async addWorkout(workout) {
-                const transaction = db.transaction(['workouts'], 'readwrite');
-                const store = transaction.objectStore('workouts');
-                workout.createdAt = new Date().toISOString();
-                return store.add(workout);
+                if (useLocalStorage) {
+                    workout.id = getNextId();
+                    workout.createdAt = new Date().toISOString();
+                    saveToLocalStorage('workouts', workout);
+                    return Promise.resolve(workout);
+                } else {
+                    const transaction = db.transaction(['workouts'], 'readwrite');
+                    const store = transaction.objectStore('workouts');
+                    workout.createdAt = new Date().toISOString();
+                    return store.add(workout);
+                }
             },
             
             async getAllWorkouts() {
-                const transaction = db.transaction(['workouts'], 'readonly');
-                const store = transaction.objectStore('workouts');
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    return Promise.resolve(getFromLocalStorage('workouts'));
+                } else {
+                    const transaction = db.transaction(['workouts'], 'readonly');
+                    const store = transaction.objectStore('workouts');
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             },
             
             async getWorkoutsByDate(date) {
-                const transaction = db.transaction(['workouts'], 'readonly');
-                const store = transaction.objectStore('workouts');
-                const index = store.index('date');
-                return new Promise((resolve, reject) => {
-                    const request = index.getAll(date);
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    const workouts = getFromLocalStorage('workouts');
+                    return Promise.resolve(workouts.filter(w => w.date === date));
+                } else {
+                    const transaction = db.transaction(['workouts'], 'readonly');
+                    const store = transaction.objectStore('workouts');
+                    const index = store.index('date');
+                    return new Promise((resolve, reject) => {
+                        const request = index.getAll(date);
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
+            },
+            
+            async deleteWorkout(id) {
+                if (useLocalStorage) {
+                    deleteFromLocalStorage('workouts', id);
+                    return Promise.resolve();
+                } else {
+                    const transaction = db.transaction(['workouts'], 'readwrite');
+                    const store = transaction.objectStore('workouts');
+                    return store.delete(id);
+                }
             },
             
             // Program işlemleri
             async addProgram(program) {
-                const transaction = db.transaction(['programs'], 'readwrite');
-                const store = transaction.objectStore('programs');
-                program.createdAt = new Date().toISOString();
-                return store.add(program);
+                if (useLocalStorage) {
+                    program.id = getNextId();
+                    program.createdAt = new Date().toISOString();
+                    saveToLocalStorage('programs', program);
+                    return Promise.resolve(program);
+                } else {
+                    const transaction = db.transaction(['programs'], 'readwrite');
+                    const store = transaction.objectStore('programs');
+                    program.createdAt = new Date().toISOString();
+                    return store.add(program);
+                }
             },
             
             async getAllPrograms() {
-                const transaction = db.transaction(['programs'], 'readonly');
-                const store = transaction.objectStore('programs');
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    return Promise.resolve(getFromLocalStorage('programs'));
+                } else {
+                    const transaction = db.transaction(['programs'], 'readonly');
+                    const store = transaction.objectStore('programs');
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             },
             
             // Ölçüm işlemleri
             async addMeasurement(measurement) {
-                const transaction = db.transaction(['measurements'], 'readwrite');
-                const store = transaction.objectStore('measurements');
-                measurement.createdAt = new Date().toISOString();
-                return store.add(measurement);
+                if (useLocalStorage) {
+                    measurement.id = getNextId();
+                    measurement.createdAt = new Date().toISOString();
+                    saveToLocalStorage('measurements', measurement);
+                    return Promise.resolve(measurement);
+                } else {
+                    const transaction = db.transaction(['measurements'], 'readwrite');
+                    const store = transaction.objectStore('measurements');
+                    measurement.createdAt = new Date().toISOString();
+                    return store.add(measurement);
+                }
             },
             
             async getAllMeasurements() {
-                const transaction = db.transaction(['measurements'], 'readonly');
-                const store = transaction.objectStore('measurements');
-                return new Promise((resolve, reject) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    return Promise.resolve(getFromLocalStorage('measurements'));
+                } else {
+                    const transaction = db.transaction(['measurements'], 'readonly');
+                    const store = transaction.objectStore('measurements');
+                    return new Promise((resolve, reject) => {
+                        const request = store.getAll();
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             },
             
             // Ayarlar işlemleri
             async saveSetting(key, value) {
-                const transaction = db.transaction(['settings'], 'readwrite');
-                const store = transaction.objectStore('settings');
-                return store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
+                if (useLocalStorage) {
+                    const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
+                    settings[key] = { value: value, updatedAt: new Date().toISOString() };
+                    localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify(settings));
+                    return Promise.resolve();
+                } else {
+                    const transaction = db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    return store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
+                }
             },
             
             async getSetting(key) {
-                const transaction = db.transaction(['settings'], 'readonly');
-                const store = transaction.objectStore('settings');
-                return new Promise((resolve, reject) => {
-                    const request = store.get(key);
-                    request.onsuccess = () => resolve(request.result ? request.result.value : null);
-                    request.onerror = () => reject(request.error);
-                });
+                if (useLocalStorage) {
+                    const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
+                    return Promise.resolve(settings[key] ? settings[key].value : null);
+                } else {
+                    const transaction = db.transaction(['settings'], 'readonly');
+                    const store = transaction.objectStore('settings');
+                    return new Promise((resolve, reject) => {
+                        const request = store.get(key);
+                        request.onsuccess = () => resolve(request.result ? request.result.value : null);
+                        request.onerror = () => reject(request.error);
+                    });
+                }
             }
         };
 
@@ -944,31 +1130,42 @@
                     clients: clients.length,
                     workouts: workouts.length,
                     programs: programs.length,
-                    measurements: measurements.length
+                    measurements: measurements.length,
+                    storageType: useLocalStorage ? 'localStorage' : 'IndexedDB'
                 });
                 
                 // Eğer veri yoksa demo verilerini ekle
                 if (clients.length === 0) {
+                    console.log('Demo verileri ekleniyor...');
                     await addDemoData();
+                } else {
+                    // UI'yi güncelle
+                    updateAllDisplays();
                 }
-                
-                // UI'yi güncelle
-                updateAllDisplays();
                 
             } catch (error) {
                 console.error('Veritabanı yükleme hatası:', error);
                 showNotification('Veritabanı yüklenirken hata oluştu!', 'error');
+                
+                // Hata durumunda boş dizilerle devam et
+                clients = [];
+                workouts = [];
+                programs = [];
+                measurements = [];
+                updateAllDisplays();
             }
         }
         
         // Demo verilerini veritabanına ekle
         async function addDemoData() {
             try {
+                console.log('Demo verileri ekleniyor...');
+                
                 // Demo öğrenciler
                 const demoClients = [
-                    { name: 'Ahmet Yılmaz', email: 'ahmet@example.com', phone: '+90 555 123 4567', goal: 'weight-loss' },
-                    { name: 'Fatma Kaya', email: 'fatma@example.com', phone: '+90 555 234 5678', goal: 'muscle-gain' },
-                    { name: 'Mehmet Özkan', email: 'mehmet@example.com', phone: '+90 555 345 6789', goal: 'strength' }
+                    { name: 'Ahmet Yılmaz', email: 'ahmet@example.com', phone: '+90 555 123 4567', goal: 'weight-loss', height: 175, weight: 80 },
+                    { name: 'Fatma Kaya', email: 'fatma@example.com', phone: '+90 555 234 5678', goal: 'muscle-gain', height: 165, weight: 60 },
+                    { name: 'Mehmet Özkan', email: 'mehmet@example.com', phone: '+90 555 345 6789', goal: 'strength', height: 180, weight: 85 }
                 ];
                 
                 for (let client of demoClients) {
@@ -977,22 +1174,50 @@
                 
                 // Demo antrenmanlar
                 const demoWorkouts = [
-                    { exercise: 'Bench Press', sets: 4, reps: '8-10', weight: 80, date: '2026-01-13' },
-                    { exercise: 'Squat', sets: 4, reps: '12', weight: 100, date: '2026-01-13' },
-                    { exercise: 'Pull-up', sets: 4, reps: '6-8', weight: 0, date: '2026-01-13' }
+                    { exercise: 'Bench Press', sets: 4, reps: '8-10', weight: 80, date: '2026-01-20', notes: 'İyi form ile yapıldı' },
+                    { exercise: 'Squat', sets: 4, reps: '12', weight: 100, date: '2026-01-20', notes: 'Derinlik iyi' },
+                    { exercise: 'Pull-up', sets: 4, reps: '6-8', weight: 0, date: '2026-01-20', notes: 'Vücut ağırlığı ile' },
+                    { exercise: 'Deadlift', sets: 3, reps: '5', weight: 120, date: '2026-01-19', notes: 'Güçlü kaldırış' },
+                    { exercise: 'Shoulder Press', sets: 3, reps: '10', weight: 40, date: '2026-01-19', notes: 'Omuz stabilitesi iyi' }
                 ];
                 
                 for (let workout of demoWorkouts) {
                     await DatabaseManager.addWorkout(workout);
                 }
                 
+                // Demo programlar
+                const demoPrograms = [
+                    { 
+                        name: 'Başlangıç Kuvvet Programı', 
+                        client: 'ahmet', 
+                        type: 'strength', 
+                        duration: 8, 
+                        frequency: 3, 
+                        description: 'Temel kuvvet hareketlerine odaklanan 8 haftalık program' 
+                    },
+                    { 
+                        name: 'Kas Geliştirme Programı', 
+                        client: 'fatma', 
+                        type: 'mixed', 
+                        duration: 12, 
+                        frequency: 4, 
+                        description: 'Kas kütlesi artırımına yönelik kapsamlı program' 
+                    }
+                ];
+                
+                for (let program of demoPrograms) {
+                    await DatabaseManager.addProgram(program);
+                }
+                
                 // Verileri yeniden yükle
                 await loadDataFromDatabase();
                 
-                showNotification('Demo verileri eklendi!', 'success');
+                showNotification('Demo verileri başarıyla eklendi!', 'success');
+                console.log('Demo verileri ekleme tamamlandı');
                 
             } catch (error) {
                 console.error('Demo veri ekleme hatası:', error);
+                showNotification('Demo verileri eklenirken hata oluştu!', 'error');
             }
         }
         
@@ -1058,10 +1283,12 @@
             // Hoş geldiniz mesajını güncelle
             const welcomeCard = document.querySelector('.card p');
             if (welcomeCard) {
+                const storageInfo = useLocalStorage ? 'localStorage' : 'IndexedDB';
                 welcomeCard.innerHTML = `
                     Bugün <strong>${new Date().toLocaleDateString('tr-TR')}</strong> tarihinde 
                     <strong>${todayWorkouts}</strong> antrenman kaydedildi.
                     <br><small>Toplam <strong>${clients.length}</strong> öğrenci, <strong>${workouts.length}</strong> antrenman kaydı mevcut.</small>
+                    <br><small style="color: #6200ee;">💾 Veritabanı: ${storageInfo} aktif</small>
                 `;
             }
         }
@@ -1129,9 +1356,7 @@
         
         function deleteWorkout(workoutId) {
             if (confirm('Bu antrenman kaydını silmek istediğinizden emin misiniz?')) {
-                const transaction = db.transaction(['workouts'], 'readwrite');
-                const store = transaction.objectStore('workouts');
-                store.delete(workoutId).then(() => {
+                DatabaseManager.deleteWorkout(workoutId).then(() => {
                     showNotification('Antrenman kaydı silindi!');
                     loadDataFromDatabase();
                 }).catch(error => {
@@ -1256,15 +1481,7 @@
             notification.className = `notification ${type}`;
             notification.textContent = message;
             
-            // Renk ayarları
-            if (type === 'error') {
-                notification.style.backgroundColor = '#d32f2f';
-            } else if (type === 'info') {
-                notification.style.backgroundColor = '#1976d2';
-            } else {
-                notification.style.backgroundColor = '#4caf50';
-            }
-            
+            // Renk ayarları (CSS'de tanımlı)
             document.body.appendChild(notification);
             
             setTimeout(() => {
@@ -1744,7 +1961,16 @@
             try {
                 // Veritabanını başlat
                 await initDatabase();
-                console.log('Veritabanı başlatıldı');
+                
+                if (useLocalStorage) {
+                    console.log('localStorage veritabanı modu aktif');
+                    document.getElementById('db-status').textContent = '💾 localStorage: Aktif';
+                    showNotification('Veritabanı (localStorage) başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'info');
+                } else {
+                    console.log('IndexedDB veritabanı modu aktif');
+                    document.getElementById('db-status').textContent = '💾 IndexedDB: Aktif';
+                    showNotification('Veritabanı (IndexedDB) başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'success');
+                }
                 
                 // Verileri yükle
                 await loadDataFromDatabase();
@@ -1765,12 +1991,33 @@
                     }, index * 100);
                 });
                 
-                // Veritabanı durumu bildirimi
-                showNotification('Veritabanı bağlantısı başarılı! Tüm değişiklikler otomatik kaydediliyor.', 'success');
+                // Netlify deployment için özel mesaj
+                if (window.location.hostname.includes('netlify')) {
+                    setTimeout(() => {
+                        showNotification('Netlify deployment aktif! Veriler localStorage ile korunuyor.', 'info');
+                    }, 2000);
+                }
                 
             } catch (error) {
                 console.error('Uygulama başlatma hatası:', error);
-                showNotification('Veritabanı başlatılamadı! Veriler geçici olarak saklanacak.', 'error');
+                document.getElementById('db-status').textContent = '💾 Hata: Başlatılamadı';
+                showNotification('Veritabanı başlatılamadı! Lütfen sayfayı yenileyin.', 'error');
+                
+                // Son çare olarak localStorage'ı dene
+                if (!useLocalStorage) {
+                    console.log('Son çare localStorage deneniyor...');
+                    useLocalStorage = true;
+                    try {
+                        initLocalStorage();
+                        await loadDataFromDatabase();
+                        document.getElementById('db-status').textContent = '💾 localStorage: Yedek Aktif';
+                        showNotification('Yedek veritabanı (localStorage) aktif edildi!', 'info');
+                    } catch (fallbackError) {
+                        console.error('localStorage fallback hatası:', fallbackError);
+                        document.getElementById('db-status').textContent = '💾 Hata: Çalışmıyor';
+                        showNotification('Hiçbir veritabanı sistemi çalışmıyor!', 'error');
+                    }
+                }
             }
         });
     </script>
