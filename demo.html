@@ -9,14 +9,15 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
-        // Firebase yapılandırması (Demo - Gerçek proje için değiştirin)
+        // Firebase yapılandırması - PTAnalizer
+        // GERÇEK CONFIG İÇİN: Firebase Console > Proje Ayarları > Web App Config
         const firebaseConfig = {
-            apiKey: "AIzaSyDNxjKzJlzYhQVzYhQVzYhQVzYhQVzYhQV",
-            authDomain: "personal-trainer-demo-12345.firebaseapp.com",
-            projectId: "personal-trainer-demo-12345",
-            storageBucket: "personal-trainer-demo-12345.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:0123456789abcdef123456"
+            apiKey: "AIzaSyC_PTAnalizer_API_KEY_BURAYA",
+            authDomain: "ptanalizer.firebaseapp.com",
+            projectId: "ptanalizer",
+            storageBucket: "ptanalizer.appspot.com",
+            messagingSenderId: "987654321098",
+            appId: "1:987654321098:web:ptanalizer123456789"
         };
         
         // Firebase'i başlat
@@ -37,7 +38,7 @@
             orderBy
         };
         
-        console.log('Firebase başlatıldı');
+        console.log('🔥 PTAnalizer Firebase başlatıldı');
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -774,13 +775,17 @@
                     const { collection, addDoc } = window.firebaseModules;
                     
                     try {
-                        // Firebase bağlantı testi
-                        await addDoc(collection(window.firebaseDB, 'test'), {
+                        // PTAnalizer Firebase bağlantı testi
+                        console.log('PTAnalizer Firebase bağlantısı test ediliyor...');
+                        
+                        await addDoc(collection(window.firebaseDB, 'ptanalizer_test'), {
                             timestamp: new Date(),
+                            app: 'PTAnalizer',
+                            version: '1.0.0',
                             test: true
                         });
                         
-                        console.log('Firebase bağlantı testi başarılı');
+                        console.log('✅ PTAnalizer Firebase bağlantı testi başarılı');
                         useFirebase = true;
                         useLocalStorage = false;
                         return true;
@@ -987,7 +992,7 @@
                     if (useFirebase) {
                         client.lastWorkout = new Date().toISOString().split('T')[0];
                         client.workouts = 0;
-                        return await addToFirebase('clients', client);
+                        return await addToFirebase('ptanalizer_clients', client);
                     } else {
                         client.id = getNextId();
                         client.createdAt = new Date().toISOString();
@@ -1010,7 +1015,7 @@
             async getAllClients() {
                 try {
                     if (useFirebase) {
-                        return await getFromFirebase('clients');
+                        return await getFromFirebase('ptanalizer_clients');
                     } else {
                         return Promise.resolve(getFromLocalStorage('clients'));
                     }
@@ -1023,7 +1028,7 @@
             async updateClient(client) {
                 try {
                     if (useFirebase) {
-                        return await updateInFirebase('clients', client.id, client);
+                        return await updateInFirebase('ptanalizer_clients', client.id, client);
                     } else {
                         client.updatedAt = new Date().toISOString();
                         const success = updateInLocalStorage('clients', client);
@@ -1042,7 +1047,7 @@
             async deleteClient(id) {
                 try {
                     if (useFirebase) {
-                        await deleteFromFirebase('clients', id);
+                        await deleteFromFirebase('ptanalizer_clients', id);
                         return Promise.resolve();
                     } else {
                         const success = deleteFromLocalStorage('clients', id);
@@ -1062,7 +1067,7 @@
             async addWorkout(workout) {
                 try {
                     if (useFirebase) {
-                        return await addToFirebase('workouts', workout);
+                        return await addToFirebase('ptanalizer_workouts', workout);
                     } else {
                         workout.id = getNextId();
                         workout.createdAt = new Date().toISOString();
@@ -1083,7 +1088,7 @@
             async getAllWorkouts() {
                 try {
                     if (useFirebase) {
-                        return await getFromFirebase('workouts');
+                        return await getFromFirebase('ptanalizer_workouts');
                     } else {
                         return Promise.resolve(getFromLocalStorage('workouts'));
                     }
@@ -1096,7 +1101,7 @@
             async deleteWorkout(id) {
                 try {
                     if (useFirebase) {
-                        await deleteFromFirebase('workouts', id);
+                        await deleteFromFirebase('ptanalizer_workouts', id);
                         return Promise.resolve();
                     } else {
                         const success = deleteFromLocalStorage('workouts', id);
@@ -1116,7 +1121,7 @@
             async addProgram(program) {
                 try {
                     if (useFirebase) {
-                        return await addToFirebase('programs', program);
+                        return await addToFirebase('ptanalizer_programs', program);
                     } else {
                         program.id = getNextId();
                         program.createdAt = new Date().toISOString();
@@ -1137,7 +1142,7 @@
             async getAllPrograms() {
                 try {
                     if (useFirebase) {
-                        return await getFromFirebase('programs');
+                        return await getFromFirebase('ptanalizer_programs');
                     } else {
                         return Promise.resolve(getFromLocalStorage('programs'));
                     }
@@ -1153,7 +1158,7 @@
                     if (useFirebase) {
                         // Firebase'de ayarları ayrı koleksiyon olarak sakla
                         const settingData = { key, value };
-                        return await addToFirebase('settings', settingData);
+                        return await addToFirebase('ptanalizer_settings', settingData);
                     } else {
                         const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
                         settings[key] = { value: value, updatedAt: new Date().toISOString() };
@@ -1170,7 +1175,7 @@
             async getSetting(key) {
                 try {
                     if (useFirebase) {
-                        const settings = await getFromFirebase('settings');
+                        const settings = await getFromFirebase('ptanalizer_settings');
                         const setting = settings.find(s => s.key === key);
                         return Promise.resolve(setting ? setting.value : null);
                     } else {
@@ -2107,13 +2112,13 @@
                 await initDatabase();
                 
                 if (useFirebase) {
-                    console.log('Firebase Firestore veritabanı sistemi aktif');
-                    document.getElementById('db-status').textContent = '� Firebase: Aktif ✅';
-                    showNotification('Firebase bulut veritabanı başarıyla başlatıldı! Veriler gerçek zamanlı senkronize ediliyor.', 'success');
+                    console.log('🔥 PTAnalizer Firebase Firestore sistemi aktif');
+                    document.getElementById('db-status').textContent = '🔥 PTAnalizer Firebase: Aktif ✅';
+                    showNotification('PTAnalizer Firebase bulut veritabanı başarıyla başlatıldı! Veriler gerçek zamanlı senkronize ediliyor.', 'success');
                 } else {
-                    console.log('localStorage veritabanı sistemi aktif (Firebase fallback)');
-                    document.getElementById('db-status').textContent = '💾 localStorage: Aktif ✅';
-                    showNotification('localStorage veritabanı başarıyla başlatıldı! (Firebase fallback)', 'info');
+                    console.log('💾 PTAnalizer localStorage sistemi aktif (Firebase fallback)');
+                    document.getElementById('db-status').textContent = '💾 PTAnalizer localStorage: Aktif ✅';
+                    showNotification('PTAnalizer localStorage veritabanı başarıyla başlatıldı! (Firebase fallback)', 'info');
                 }
                 
                 // Verileri yükle
