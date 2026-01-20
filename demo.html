@@ -755,20 +755,246 @@
     </div>
     
     <script>
-        // Global değişkenler
-        let clients = [
-            { id: 1, name: 'Ahmet Yılmaz', email: 'ahmet@example.com', workouts: 24, lastWorkout: '2026-01-12' },
-            { id: 2, name: 'Fatma Kaya', email: 'fatma@example.com', workouts: 18, lastWorkout: '2026-01-11' },
-            { id: 3, name: 'Mehmet Özkan', email: 'mehmet@example.com', workouts: 31, lastWorkout: '2026-01-10' }
-        ];
-        
-        let workouts = [
-            { id: 1, exercise: 'Bench Press', sets: 4, reps: '8-10', weight: 80, date: '2026-01-13' },
-            { id: 2, exercise: 'Squat', sets: 4, reps: '12', weight: 100, date: '2026-01-13' },
-            { id: 3, exercise: 'Pull-up', sets: 4, reps: '6-8', weight: 0, date: '2026-01-13' }
-        ];
-        
+        // IndexedDB Veritabanı Yönetimi
+        let db;
+        const DB_NAME = 'PersonalTrainerDB';
+        const DB_VERSION = 1;
+
+        // Veritabanını başlat
+        function initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    
+                    // Öğrenciler tablosu
+                    if (!db.objectStoreNames.contains('clients')) {
+                        const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
+                        clientStore.createIndex('email', 'email', { unique: true });
+                        clientStore.createIndex('name', 'name', { unique: false });
+                    }
+                    
+                    // Antrenmanlar tablosu
+                    if (!db.objectStoreNames.contains('workouts')) {
+                        const workoutStore = db.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true });
+                        workoutStore.createIndex('date', 'date', { unique: false });
+                        workoutStore.createIndex('exercise', 'exercise', { unique: false });
+                    }
+                    
+                    // Programlar tablosu
+                    if (!db.objectStoreNames.contains('programs')) {
+                        const programStore = db.createObjectStore('programs', { keyPath: 'id', autoIncrement: true });
+                        programStore.createIndex('name', 'name', { unique: false });
+                    }
+                    
+                    // Vücut ölçümleri tablosu
+                    if (!db.objectStoreNames.contains('measurements')) {
+                        const measurementStore = db.createObjectStore('measurements', { keyPath: 'id', autoIncrement: true });
+                        measurementStore.createIndex('date', 'date', { unique: false });
+                        measurementStore.createIndex('clientId', 'clientId', { unique: false });
+                    }
+                    
+                    // Ayarlar tablosu
+                    if (!db.objectStoreNames.contains('settings')) {
+                        const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
+                    }
+                };
+            });
+        }
+
+        // Veritabanı işlemleri
+        const DatabaseManager = {
+            // Öğrenci işlemleri
+            async addClient(client) {
+                const transaction = db.transaction(['clients'], 'readwrite');
+                const store = transaction.objectStore('clients');
+                client.createdAt = new Date().toISOString();
+                client.lastWorkout = new Date().toISOString().split('T')[0];
+                client.workouts = 0;
+                return store.add(client);
+            },
+            
+            async getAllClients() {
+                const transaction = db.transaction(['clients'], 'readonly');
+                const store = transaction.objectStore('clients');
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            async updateClient(client) {
+                const transaction = db.transaction(['clients'], 'readwrite');
+                const store = transaction.objectStore('clients');
+                return store.put(client);
+            },
+            
+            async deleteClient(id) {
+                const transaction = db.transaction(['clients'], 'readwrite');
+                const store = transaction.objectStore('clients');
+                return store.delete(id);
+            },
+            
+            // Antrenman işlemleri
+            async addWorkout(workout) {
+                const transaction = db.transaction(['workouts'], 'readwrite');
+                const store = transaction.objectStore('workouts');
+                workout.createdAt = new Date().toISOString();
+                return store.add(workout);
+            },
+            
+            async getAllWorkouts() {
+                const transaction = db.transaction(['workouts'], 'readonly');
+                const store = transaction.objectStore('workouts');
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            async getWorkoutsByDate(date) {
+                const transaction = db.transaction(['workouts'], 'readonly');
+                const store = transaction.objectStore('workouts');
+                const index = store.index('date');
+                return new Promise((resolve, reject) => {
+                    const request = index.getAll(date);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            // Program işlemleri
+            async addProgram(program) {
+                const transaction = db.transaction(['programs'], 'readwrite');
+                const store = transaction.objectStore('programs');
+                program.createdAt = new Date().toISOString();
+                return store.add(program);
+            },
+            
+            async getAllPrograms() {
+                const transaction = db.transaction(['programs'], 'readonly');
+                const store = transaction.objectStore('programs');
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            // Ölçüm işlemleri
+            async addMeasurement(measurement) {
+                const transaction = db.transaction(['measurements'], 'readwrite');
+                const store = transaction.objectStore('measurements');
+                measurement.createdAt = new Date().toISOString();
+                return store.add(measurement);
+            },
+            
+            async getAllMeasurements() {
+                const transaction = db.transaction(['measurements'], 'readonly');
+                const store = transaction.objectStore('measurements');
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            
+            // Ayarlar işlemleri
+            async saveSetting(key, value) {
+                const transaction = db.transaction(['settings'], 'readwrite');
+                const store = transaction.objectStore('settings');
+                return store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
+            },
+            
+            async getSetting(key) {
+                const transaction = db.transaction(['settings'], 'readonly');
+                const store = transaction.objectStore('settings');
+                return new Promise((resolve, reject) => {
+                    const request = store.get(key);
+                    request.onsuccess = () => resolve(request.result ? request.result.value : null);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        };
+
+        // Global değişkenler - artık veritabanından yüklenecek
+        let clients = [];
+        let workouts = [];
         let programs = [];
+        let measurements = [];
+        
+        // Veritabanından verileri yükle
+        async function loadDataFromDatabase() {
+            try {
+                clients = await DatabaseManager.getAllClients();
+                workouts = await DatabaseManager.getAllWorkouts();
+                programs = await DatabaseManager.getAllPrograms();
+                measurements = await DatabaseManager.getAllMeasurements();
+                
+                console.log('Veritabanından yüklendi:', {
+                    clients: clients.length,
+                    workouts: workouts.length,
+                    programs: programs.length,
+                    measurements: measurements.length
+                });
+                
+                // Eğer veri yoksa demo verilerini ekle
+                if (clients.length === 0) {
+                    await addDemoData();
+                }
+                
+                // UI'yi güncelle
+                updateAllDisplays();
+                
+            } catch (error) {
+                console.error('Veritabanı yükleme hatası:', error);
+                showNotification('Veritabanı yüklenirken hata oluştu!', 'error');
+            }
+        }
+        
+        // Demo verilerini veritabanına ekle
+        async function addDemoData() {
+            try {
+                // Demo öğrenciler
+                const demoClients = [
+                    { name: 'Ahmet Yılmaz', email: 'ahmet@example.com', phone: '+90 555 123 4567', goal: 'weight-loss' },
+                    { name: 'Fatma Kaya', email: 'fatma@example.com', phone: '+90 555 234 5678', goal: 'muscle-gain' },
+                    { name: 'Mehmet Özkan', email: 'mehmet@example.com', phone: '+90 555 345 6789', goal: 'strength' }
+                ];
+                
+                for (let client of demoClients) {
+                    await DatabaseManager.addClient(client);
+                }
+                
+                // Demo antrenmanlar
+                const demoWorkouts = [
+                    { exercise: 'Bench Press', sets: 4, reps: '8-10', weight: 80, date: '2026-01-13' },
+                    { exercise: 'Squat', sets: 4, reps: '12', weight: 100, date: '2026-01-13' },
+                    { exercise: 'Pull-up', sets: 4, reps: '6-8', weight: 0, date: '2026-01-13' }
+                ];
+                
+                for (let workout of demoWorkouts) {
+                    await DatabaseManager.addWorkout(workout);
+                }
+                
+                // Verileri yeniden yükle
+                await loadDataFromDatabase();
+                
+                showNotification('Demo verileri eklendi!', 'success');
+                
+            } catch (error) {
+                console.error('Demo veri ekleme hatası:', error);
+            }
+        }
         
         function showTab(tabName) {
             // Tüm tab içeriklerini gizle
@@ -787,6 +1013,26 @@
             updateTabContent(tabName);
         }
         
+        function updateAllDisplays() {
+            const activeTab = document.querySelector('.tab.active');
+            if (activeTab) {
+                const tabName = activeTab.textContent.trim();
+                updateTabContent(getTabNameFromText(tabName));
+            }
+            updateHomeStats();
+        }
+        
+        function getTabNameFromText(text) {
+            switch(text) {
+                case 'Ana Sayfa': return 'home';
+                case 'Öğrenciler': return 'clients';
+                case 'Antrenmanlar': return 'workouts';
+                case 'Raporlar': return 'reports';
+                case 'Profil': return 'profile';
+                default: return 'home';
+            }
+        }
+        
         function updateTabContent(tabName) {
             if (tabName === 'clients') {
                 updateClientsDisplay();
@@ -800,10 +1046,24 @@
         function updateHomeStats() {
             // Ana sayfa istatistiklerini güncelle
             const totalClients = clients.length;
-            const todayWorkouts = workouts.filter(w => w.date === '2026-01-13').length;
+            const today = new Date().toISOString().split('T')[0];
+            const todayWorkouts = workouts.filter(w => w.date === today).length;
             
-            document.querySelector('.stat-card .stat-number').textContent = totalClients;
-            document.querySelectorAll('.stat-card .stat-number')[1].textContent = todayWorkouts;
+            const statCards = document.querySelectorAll('.stat-card .stat-number');
+            if (statCards.length >= 2) {
+                statCards[0].textContent = totalClients;
+                statCards[1].textContent = todayWorkouts;
+            }
+            
+            // Hoş geldiniz mesajını güncelle
+            const welcomeCard = document.querySelector('.card p');
+            if (welcomeCard) {
+                welcomeCard.innerHTML = `
+                    Bugün <strong>${new Date().toLocaleDateString('tr-TR')}</strong> tarihinde 
+                    <strong>${todayWorkouts}</strong> antrenman kaydedildi.
+                    <br><small>Toplam <strong>${clients.length}</strong> öğrenci, <strong>${workouts.length}</strong> antrenman kaydı mevcut.</small>
+                `;
+            }
         }
         
         function updateClientsDisplay() {
@@ -812,24 +1072,97 @@
             
             clients.forEach(client => {
                 const initials = client.name.split(' ').map(n => n[0]).join('');
+                const clientWorkouts = workouts.filter(w => w.clientId === client.id).length;
+                const lastWorkout = client.lastWorkout ? new Date(client.lastWorkout).toLocaleDateString('tr-TR') : 'Henüz yok';
+                
                 clientsHTML += `
                     <div class="client-item">
                         <div class="avatar">${initials}</div>
                         <div class="client-info">
                             <h4>${client.name}</h4>
-                            <p>${client.email} • ${client.workouts} antrenman</p>
-                            <p style="font-size: 12px; color: #999;">Son antrenman: ${new Date(client.lastWorkout).toLocaleDateString('tr-TR')}</p>
+                            <p>${client.email} • ${clientWorkouts} antrenman</p>
+                            <p style="font-size: 12px; color: #999;">Son antrenman: ${lastWorkout}</p>
+                            ${client.phone ? `<p style="font-size: 12px; color: #666;">📞 ${client.phone}</p>` : ''}
+                            ${client.goal ? `<p style="font-size: 12px; color: #6200ee;">🎯 ${getGoalText(client.goal)}</p>` : ''}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <button onclick="editClient(${client.id})" style="background: #6200ee; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Düzenle</button>
+                            <button onclick="deleteClient(${client.id})" style="background: #d32f2f; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Sil</button>
                         </div>
                     </div>
                 `;
             });
             
+            if (clients.length === 0) {
+                clientsHTML += `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <p>Henüz öğrenci eklenmemiş.</p>
+                        <p>+ butonuna tıklayarak ilk öğrencinizi ekleyin!</p>
+                    </div>
+                `;
+            }
+            
             clientsContainer.innerHTML = clientsHTML;
+        }
+        
+        function getGoalText(goal) {
+            const goals = {
+                'weight-loss': 'Kilo Verme',
+                'muscle-gain': 'Kas Kazanma',
+                'strength': 'Kuvvet Artırma',
+                'endurance': 'Dayanıklılık'
+            };
+            return goals[goal] || goal;
+        }
+        
+        function deleteClient(clientId) {
+            if (confirm('Bu öğrenciyi silmek istediğinizden emin misiniz?')) {
+                DatabaseManager.deleteClient(clientId).then(() => {
+                    showNotification('Öğrenci başarıyla silindi!');
+                    loadDataFromDatabase();
+                }).catch(error => {
+                    console.error('Öğrenci silme hatası:', error);
+                    showNotification('Öğrenci silinirken hata oluştu!', 'error');
+                });
+            }
+        }
+        
+        function deleteWorkout(workoutId) {
+            if (confirm('Bu antrenman kaydını silmek istediğinizden emin misiniz?')) {
+                const transaction = db.transaction(['workouts'], 'readwrite');
+                const store = transaction.objectStore('workouts');
+                store.delete(workoutId).then(() => {
+                    showNotification('Antrenman kaydı silindi!');
+                    loadDataFromDatabase();
+                }).catch(error => {
+                    console.error('Antrenman silme hatası:', error);
+                    showNotification('Antrenman silinirken hata oluştu!', 'error');
+                });
+            }
+        }
+        
+        function editClient(clientId) {
+            // Basit edit işlemi - gelecekte geliştirilebilir
+            const client = clients.find(c => c.id === clientId);
+            if (client) {
+                const newName = prompt('Yeni ad:', client.name);
+                if (newName && newName !== client.name) {
+                    client.name = newName;
+                    DatabaseManager.updateClient(client).then(() => {
+                        showNotification('Öğrenci bilgileri güncellendi!');
+                        loadDataFromDatabase();
+                    }).catch(error => {
+                        console.error('Öğrenci güncelleme hatası:', error);
+                        showNotification('Öğrenci güncellenirken hata oluştu!', 'error');
+                    });
+                }
+            }
         }
         
         function updateWorkoutsDisplay() {
             const workoutsContainer = document.querySelector('#workouts .card');
-            const todayWorkouts = workouts.filter(w => w.date === '2026-01-13');
+            const today = new Date().toISOString().split('T')[0];
+            const todayWorkouts = workouts.filter(w => w.date === today);
             
             let workoutsHTML = `
                 <h3>Bugünkü Antrenmanlar 💪</h3>
@@ -842,13 +1175,24 @@
                         <div>
                             <h4>${workout.exercise}</h4>
                             <p>${workout.sets} set × ${workout.reps} tekrar</p>
+                            ${workout.notes ? `<p style="font-size: 12px; color: #666; font-style: italic;">${workout.notes}</p>` : ''}
                         </div>
                         <div class="workout-details">
                             <div class="weight">${workout.weight > 0 ? workout.weight + ' kg' : 'Vücut ağırlığı'}</div>
+                            <button onclick="deleteWorkout(${workout.id})" style="background: #d32f2f; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-top: 4px; cursor: pointer;">Sil</button>
                         </div>
                     </div>
                 `;
             });
+            
+            if (todayWorkouts.length === 0) {
+                workoutsHTML += `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <p>Bugün henüz antrenman kaydı yok.</p>
+                        <p>+ butonuna tıklayarak ilk antrenmanınızı kaydedin!</p>
+                    </div>
+                `;
+            }
             
             workoutsContainer.innerHTML = workoutsHTML;
         }
@@ -911,6 +1255,16 @@
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
+            
+            // Renk ayarları
+            if (type === 'error') {
+                notification.style.backgroundColor = '#d32f2f';
+            } else if (type === 'info') {
+                notification.style.backgroundColor = '#1976d2';
+            } else {
+                notification.style.backgroundColor = '#4caf50';
+            }
+            
             document.body.appendChild(notification);
             
             setTimeout(() => {
@@ -920,9 +1274,11 @@
             setTimeout(() => {
                 notification.classList.remove('show');
                 setTimeout(() => {
-                    document.body.removeChild(notification);
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
                 }, 300);
-            }, 3000);
+            }, 4000);
         }
         
         function addClient(event) {
@@ -932,66 +1288,81 @@
             const email = document.getElementById('clientEmail').value;
             const phone = document.getElementById('clientPhone').value;
             const goal = document.getElementById('clientGoal').value;
+            const height = document.getElementById('clientHeight').value;
+            const weight = document.getElementById('clientWeight').value;
             
             const newClient = {
-                id: clients.length + 1,
                 name: name,
                 email: email,
                 phone: phone,
                 goal: goal,
-                workouts: 0,
-                lastWorkout: null
+                height: height ? parseFloat(height) : null,
+                weight: weight ? parseFloat(weight) : null
             };
             
-            clients.push(newClient);
-            
-            // Success mesajını göster
-            const successMsg = document.getElementById('clientSuccess');
-            successMsg.style.display = 'block';
-            
-            // Notification göster
-            showNotification(`${name} başarıyla eklendi!`);
-            
-            // 2 saniye sonra modal'ı kapat
-            setTimeout(() => {
-                closeModal('addClientModal');
-                updateClientsDisplay();
-                updateHomeStats();
-            }, 2000);
+            // Veritabanına kaydet
+            DatabaseManager.addClient(newClient).then(() => {
+                // Success mesajını göster
+                const successMsg = document.getElementById('clientSuccess');
+                successMsg.style.display = 'block';
+                
+                // Notification göster
+                showNotification(name + ' başarıyla eklendi ve veritabanına kaydedildi!');
+                
+                // Verileri yeniden yükle
+                loadDataFromDatabase().then(() => {
+                    // 2 saniye sonra modal'ı kapat
+                    setTimeout(() => {
+                        closeModal('addClientModal');
+                    }, 2000);
+                });
+                
+            }).catch(error => {
+                console.error('Öğrenci ekleme hatası:', error);
+                showNotification('Öğrenci eklenirken hata oluştu!', 'error');
+            });
         }
         
         function addWorkout(event) {
             event.preventDefault();
             
-            const exercise = document.getElementById('exerciseName').options[document.getElementById('exerciseName').selectedIndex].text;
+            const exerciseSelect = document.getElementById('exerciseName');
+            const exercise = exerciseSelect.options[exerciseSelect.selectedIndex].text;
             const sets = parseInt(document.getElementById('workoutSets').value);
             const reps = document.getElementById('workoutReps').value;
             const weight = parseFloat(document.getElementById('workoutWeight').value) || 0;
+            const notes = document.getElementById('workoutNotes').value;
             
             const newWorkout = {
-                id: workouts.length + 1,
                 exercise: exercise,
                 sets: sets,
                 reps: reps,
                 weight: weight,
-                date: '2026-01-13'
+                notes: notes,
+                date: new Date().toISOString().split('T')[0]
             };
             
-            workouts.push(newWorkout);
-            
-            // Success mesajını göster
-            const successMsg = document.getElementById('workoutSuccess');
-            successMsg.style.display = 'block';
-            
-            // Notification göster
-            showNotification(`${exercise} antrenmanı kaydedildi!`);
-            
-            // 2 saniye sonra modal'ı kapat
-            setTimeout(() => {
-                closeModal('addWorkoutModal');
-                updateWorkoutsDisplay();
-                updateHomeStats();
-            }, 2000);
+            // Veritabanına kaydet
+            DatabaseManager.addWorkout(newWorkout).then(() => {
+                // Success mesajını göster
+                const successMsg = document.getElementById('workoutSuccess');
+                successMsg.style.display = 'block';
+                
+                // Notification göster
+                showNotification(exercise + ' antrenmanı kaydedildi ve veritabanına kaydedildi!');
+                
+                // Verileri yeniden yükle
+                loadDataFromDatabase().then(() => {
+                    // 2 saniye sonra modal'ı kapat
+                    setTimeout(() => {
+                        closeModal('addWorkoutModal');
+                    }, 2000);
+                });
+                
+            }).catch(error => {
+                console.error('Antrenman ekleme hatası:', error);
+                showNotification('Antrenman kaydedilirken hata oluştu!', 'error');
+            });
         }
         
         function createProgram(event) {
@@ -1001,29 +1372,39 @@
             const client = document.getElementById('programClient').value;
             const type = document.getElementById('programType').value;
             const duration = document.getElementById('programDuration').value;
+            const frequency = document.getElementById('programFrequency').value;
+            const description = document.getElementById('programDescription').value;
             
             const newProgram = {
-                id: programs.length + 1,
                 name: name,
                 client: client,
                 type: type,
-                duration: duration,
-                created: new Date().toISOString().split('T')[0]
+                duration: parseInt(duration),
+                frequency: parseInt(frequency),
+                description: description
             };
             
-            programs.push(newProgram);
-            
-            // Success mesajını göster
-            const successMsg = document.getElementById('programSuccess');
-            successMsg.style.display = 'block';
-            
-            // Notification göster
-            showNotification(`${name} programı oluşturuldu!`);
-            
-            // 2 saniye sonra modal'ı kapat
-            setTimeout(() => {
-                closeModal('createProgramModal');
-            }, 2000);
+            // Veritabanına kaydet
+            DatabaseManager.addProgram(newProgram).then(() => {
+                // Success mesajını göster
+                const successMsg = document.getElementById('programSuccess');
+                successMsg.style.display = 'block';
+                
+                // Notification göster
+                showNotification(name + ' programı oluşturuldu ve veritabanına kaydedildi!');
+                
+                // Verileri yeniden yükle
+                loadDataFromDatabase().then(() => {
+                    // 2 saniye sonra modal'ı kapat
+                    setTimeout(() => {
+                        closeModal('createProgramModal');
+                    }, 2000);
+                });
+                
+            }).catch(error => {
+                console.error('Program ekleme hatası:', error);
+                showNotification('Program oluşturulurken hata oluştu!', 'error');
+            });
         }
         
         function updateProfile(event) {
@@ -1047,17 +1428,36 @@
         function saveSettings(event) {
             event.preventDefault();
             
-            // Success mesajını göster
-            const successMsg = document.getElementById('settingsSuccess');
-            successMsg.style.display = 'block';
+            const notifications = document.getElementById('notifications').checked;
+            const darkMode = document.getElementById('darkMode').checked;
+            const autoBackup = document.getElementById('autoBackup').checked;
+            const language = document.getElementById('language').value;
+            const weightUnit = document.getElementById('weightUnit').value;
             
-            // Notification göster
-            showNotification('Ayarlar başarıyla kaydedildi!');
-            
-            // 2 saniye sonra modal'ı kapat
-            setTimeout(() => {
-                closeModal('settingsModal');
-            }, 2000);
+            // Ayarları veritabanına kaydet
+            Promise.all([
+                DatabaseManager.saveSetting('notifications', notifications),
+                DatabaseManager.saveSetting('darkMode', darkMode),
+                DatabaseManager.saveSetting('autoBackup', autoBackup),
+                DatabaseManager.saveSetting('language', language),
+                DatabaseManager.saveSetting('weightUnit', weightUnit)
+            ]).then(() => {
+                // Success mesajını göster
+                const successMsg = document.getElementById('settingsSuccess');
+                successMsg.style.display = 'block';
+                
+                // Notification göster
+                showNotification('Ayarlar başarıyla kaydedildi ve veritabanına kaydedildi!');
+                
+                // 2 saniye sonra modal'ı kapat
+                setTimeout(() => {
+                    closeModal('settingsModal');
+                }, 2000);
+                
+            }).catch(error => {
+                console.error('Ayarlar kaydetme hatası:', error);
+                showNotification('Ayarlar kaydedilirken hata oluştu!', 'error');
+            });
         }
         
         function downloadReport() {
@@ -1339,24 +1739,39 @@
             });
         }
         
-        // Sayfa yüklendiğinde animasyonlar
-        window.addEventListener('load', function() {
-            const cards = document.querySelectorAll('.card');
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(20px)';
-                    card.style.transition = 'all 0.5s ease';
-                    
+        // Sayfa yüklendiğinde veritabanını başlat
+        window.addEventListener('load', async function() {
+            try {
+                // Veritabanını başlat
+                await initDatabase();
+                console.log('Veritabanı başlatıldı');
+                
+                // Verileri yükle
+                await loadDataFromDatabase();
+                console.log('Veriler yüklendi');
+                
+                // Animasyonları başlat
+                const cards = document.querySelectorAll('.card');
+                cards.forEach((card, index) => {
                     setTimeout(() => {
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                    }, 100);
-                }, index * 100);
-            });
-            
-            // İlk yüklemede verileri güncelle
-            updateHomeStats();
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        card.style.transition = 'all 0.5s ease';
+                        
+                        setTimeout(() => {
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        }, 100);
+                    }, index * 100);
+                });
+                
+                // Veritabanı durumu bildirimi
+                showNotification('Veritabanı bağlantısı başarılı! Tüm değişiklikler otomatik kaydediliyor.', 'success');
+                
+            } catch (error) {
+                console.error('Uygulama başlatma hatası:', error);
+                showNotification('Veritabanı başlatılamadı! Veriler geçici olarak saklanacak.', 'error');
+            }
         });
     </script>
 </body>

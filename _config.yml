@@ -1,0 +1,34 @@
+title: Personal Trainer App
+description: Profesyonel fitness takip ve öğrenci yönetim sistemi
+url: "https://suatztrk.github.io"
+baseurl: "/pt"
+
+# GitHub Pages ayarları
+plugins:
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# SEO ayarları
+lang: tr
+author: Personal Trainer App
+twitter:
+  username: personaltrainerapp
+  card: summary_large_image
+
+# Sosyal medya
+social:
+  name: Personal Trainer App
+  links:
+    - https://github.com/suatztrk/pt
+
+# Tema
+theme: minima
+
+# Exclude files
+exclude:
+  - node_modules/
+  - package.json
+  - package-lock.json
+  - README.md
+  - KURULUM.md
+  - GITHUB_YUKLEME.md
