@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Trainer App - Demo</title>
+    <title>PTAnalizer - Personal Trainer Analytics</title>
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -393,128 +393,72 @@
 </head>
 <body>
     <div class="header">
-        <h1>🏋️ Personal Trainer App</h1>
-        <p>Fitness Takip ve Antrenman Yönetimi</p>
+        <h1>📊 PTAnalizer</h1>
+        <p>Personal Trainer Analytics & Performance Tracking</p>
     </div>
     
     <div class="container">
         <div class="tab-bar">
-            <div class="tab active" onclick="showTab('home')">Ana Sayfa</div>
-            <div class="tab" onclick="showTab('clients')">Öğrenciler</div>
-            <div class="tab" onclick="showTab('workouts')">Antrenmanlar</div>
+            <div class="tab active" onclick="showTab('home')">Dashboard</div>
+            <div class="tab" onclick="showTab('clients')">Müşteriler</div>
+            <div class="tab" onclick="showTab('workouts')">Analizler</div>
             <div class="tab" onclick="showTab('reports')">Raporlar</div>
-            <div class="tab" onclick="showTab('profile')">Profil</div>
+            <div class="tab" onclick="showTab('profile')">Ayarlar</div>
         </div>
         
         <!-- Ana Sayfa -->
         <div id="home" class="tab-content">
             <div class="card">
-                <h3>Hoş Geldiniz! 👋</h3>
-                <p>Bugün <strong>20 Ocak 2026</strong> tarihinde <strong>0</strong> antrenman kaydedildi.</p>
+                <h3>PTAnalizer'a Hoş Geldiniz! 📊</h3>
+                <p>Bugün <strong>20 Ocak 2026</strong> tarihinde <strong>0</strong> antrenman analiz edildi.</p>
             </div>
             
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number">24</div>
-                    <p>Toplam Öğrenci</p>
+                    <div class="stat-number" id="total-clients">0</div>
+                    <p>Aktif Müşteri</p>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number">5</div>
-                    <p>Bugünkü Antrenmanlar</p>
+                    <div class="stat-number" id="today-workouts">0</div>
+                    <p>Bugünkü Analizler</p>
                 </div>
             </div>
             
             <div class="card">
-                <h3>Haftalık İlerleme</h3>
-                <p>Bu hafta tamamlanan antrenman oranı</p>
+                <h3>Performans Analizi 📈</h3>
+                <p>Bu hafta analiz edilen performans verileri</p>
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
-                <p style="text-align: center; font-weight: bold;">85%</p>
+                <p style="text-align: center; font-weight: bold;">85% İyileşme</p>
             </div>
             
             <div class="card">
-                <h3>Hızlı İşlemler</h3>
-                <button class="btn" onclick="openModal('addClient')">Yeni Öğrenci Ekle</button>
-                <button class="btn btn-outline" onclick="openModal('createProgram')">Program Oluştur</button>
+                <h3>Hızlı Analiz Araçları</h3>
+                <button class="btn" onclick="openModal('addClient')">Yeni Müşteri Ekle</button>
+                <button class="btn btn-outline" onclick="openModal('createProgram')">Analiz Raporu Oluştur</button>
             </div>
         </div>
         
-        <!-- Öğrenciler -->
+        <!-- Müşteriler -->
         <div id="clients" class="tab-content hidden">
-            <div class="card">
-                <h3>Öğrencilerim 👥</h3>
-                
-                <div class="client-item">
-                    <div class="avatar">AY</div>
-                    <div class="client-info">
-                        <h4>Ahmet Yılmaz</h4>
-                        <p>ahmet@example.com • 24 antrenman</p>
-                        <p style="font-size: 12px; color: #999;">Son antrenman: 12 Ocak 2026</p>
-                    </div>
-                </div>
-                
-                <div class="client-item">
-                    <div class="avatar">FK</div>
-                    <div class="client-info">
-                        <h4>Fatma Kaya</h4>
-                        <p>fatma@example.com • 18 antrenman</p>
-                        <p style="font-size: 12px; color: #999;">Son antrenman: 11 Ocak 2026</p>
-                    </div>
-                </div>
-                
-                <div class="client-item">
-                    <div class="avatar">MÖ</div>
-                    <div class="client-info">
-                        <h4>Mehmet Özkan</h4>
-                        <p>mehmet@example.com • 31 antrenman</p>
-                        <p style="font-size: 12px; color: #999;">Son antrenman: 10 Ocak 2026</p>
-                    </div>
-                </div>
+            <div class="card" id="clients-container">
+                <h3>Müşteri Portföyü 👥</h3>
+                <p>Yükleniyor...</p>
             </div>
         </div>
         
-        <!-- Antrenmanlar -->
+        <!-- Analizler -->
         <div id="workouts" class="tab-content hidden">
-            <div class="card">
-                <h3>Bugünkü Antrenmanlar 💪</h3>
-                <p style="margin-bottom: 15px;"><strong>3 Egzersiz</strong> • <strong>12 Set</strong></p>
-                
-                <div class="workout-item">
-                    <div>
-                        <h4>Bench Press</h4>
-                        <p>4 set × 8-10 tekrar</p>
-                    </div>
-                    <div class="workout-details">
-                        <div class="weight">80 kg</div>
-                    </div>
-                </div>
-                
-                <div class="workout-item">
-                    <div>
-                        <h4>Squat</h4>
-                        <p>4 set × 12 tekrar</p>
-                    </div>
-                    <div class="workout-details">
-                        <div class="weight">100 kg</div>
-                    </div>
-                </div>
-                
-                <div class="workout-item">
-                    <div>
-                        <h4>Pull-up</h4>
-                        <p>4 set × 6-8 tekrar</p>
-                    </div>
-                    <div class="workout-details">
-                        <div class="weight">Vücut ağırlığı</div>
-                    </div>
-                </div>
+            <div class="card" id="workouts-container">
+                <h3>Performans Analizleri 📊</h3>
+                <p>Yükleniyor...</p>
             </div>
             
             <div class="card">
-                <h3>Antrenman Programları</h3>
-                <p>Kişiselleştirilmiş programlar oluşturun ve takip edin.</p>
-                <button class="btn btn-outline" onclick="openModal('createProgram')">Yeni Program Oluştur</button>
+                <h3>Analiz Araçları</h3>
+                <p>Gelişmiş performans analizi ve takip araçları.</p>
+                <button class="btn btn-outline" onclick="openModal('createProgram')">Yeni Analiz Oluştur</button>
             </div>
         </div>
         
@@ -600,8 +544,8 @@
     <div id="addClientModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('addClientModal')">&times;</span>
-            <h2>Yeni Öğrenci Ekle</h2>
-            <div class="success-message" id="clientSuccess">Öğrenci başarıyla eklendi!</div>
+            <h2>Yeni Müşteri Ekle</h2>
+            <div class="success-message" id="clientSuccess">Müşteri başarıyla eklendi!</div>
             <form onsubmit="addClient(event)">
                 <div class="form-group">
                     <label>Ad Soyad *</label>
@@ -635,7 +579,7 @@
                         <input type="number" id="clientWeight">
                     </div>
                 </div>
-                <button type="submit" class="btn">Öğrenci Ekle</button>
+                <button type="submit" class="btn">Müşteri Ekle</button>
                 <button type="button" class="btn btn-outline" onclick="closeModal('addClientModal')">İptal</button>
             </form>
         </div>
@@ -645,8 +589,8 @@
     <div id="addWorkoutModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('addWorkoutModal')">&times;</span>
-            <h2>Antrenman Kaydet</h2>
-            <div class="success-message" id="workoutSuccess">Antrenman başarıyla kaydedildi!</div>
+            <h2>Performans Analizi Kaydet</h2>
+            <div class="success-message" id="workoutSuccess">Analiz başarıyla kaydedildi!</div>
             <form onsubmit="addWorkout(event)">
                 <div class="form-group">
                     <label>Egzersiz *</label>
@@ -680,7 +624,7 @@
                     <label>Notlar</label>
                     <textarea id="workoutNotes" rows="3" placeholder="Antrenman hakkında notlar..."></textarea>
                 </div>
-                <button type="submit" class="btn">Antrenman Kaydet</button>
+                <button type="submit" class="btn">Analiz Kaydet</button>
                 <button type="button" class="btn btn-outline" onclick="closeModal('addWorkoutModal')">İptal</button>
             </form>
         </div>
@@ -1379,11 +1323,11 @@
         
         function getTabNameFromText(text) {
             switch(text) {
-                case 'Ana Sayfa': return 'home';
-                case 'Öğrenciler': return 'clients';
-                case 'Antrenmanlar': return 'workouts';
+                case 'Dashboard': return 'home';
+                case 'Müşteriler': return 'clients';
+                case 'Analizler': return 'workouts';
                 case 'Raporlar': return 'reports';
-                case 'Profil': return 'profile';
+                case 'Ayarlar': return 'profile';
                 default: return 'home';
             }
         }
@@ -1425,7 +1369,7 @@
         
         function updateClientsDisplay() {
             const clientsContainer = document.querySelector('#clients .card');
-            let clientsHTML = '<h3>Öğrencilerim 👥</h3>';
+            let clientsHTML = '<h3>Müşteri Portföyü 👥</h3>';
             
             clients.forEach(client => {
                 const initials = client.name.split(' ').map(n => n[0]).join('');
@@ -1453,8 +1397,8 @@
             if (clients.length === 0) {
                 clientsHTML += `
                     <div style="text-align: center; padding: 20px; color: #666;">
-                        <p>Henüz öğrenci eklenmemiş.</p>
-                        <p>+ butonuna tıklayarak ilk öğrencinizi ekleyin!</p>
+                        <p>Henüz müşteri eklenmemiş.</p>
+                        <p>+ butonuna tıklayarak ilk müşterinizi ekleyin!</p>
                     </div>
                 `;
             }
@@ -1519,9 +1463,9 @@
             const today = new Date().toISOString().split('T')[0];
             const todayWorkouts = workouts.filter(w => w.date === today);
             
-            let workoutsHTML = `
-                <h3>Bugünkü Antrenmanlar 💪</h3>
-                <p style="margin-bottom: 15px;"><strong>${todayWorkouts.length} Egzersiz</strong> • <strong>${todayWorkouts.reduce((sum, w) => sum + w.sets, 0)} Set</strong></p>
+            let html = `
+                <h3>Performans Analizleri 📊</h3>
+                <p style="margin-bottom: 15px;"><strong>${todayWorkouts.length} Analiz</strong> • <strong>${todayWorkouts.reduce((sum, w) => sum + w.sets, 0)} Veri Seti</strong></p>
             `;
             
             todayWorkouts.forEach(workout => {
@@ -1556,10 +1500,10 @@
             const activeTab = document.querySelector('.tab.active').textContent.trim();
             
             switch(activeTab) {
-                case 'Öğrenciler':
+                case 'Müşteriler':
                     openModal('addClient');
                     break;
-                case 'Antrenmanlar':
+                case 'Analizler':
                     openModal('addWorkout');
                     break;
                 default:
