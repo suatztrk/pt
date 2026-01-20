@@ -4,7 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal Trainer App - Demo</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase yapılandırması (Demo - Gerçek proje için değiştirin)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNxjKzJlzYhQVzYhQVzYhQVzYhQVzYhQV",
+            authDomain: "personal-trainer-demo-12345.firebaseapp.com",
+            projectId: "personal-trainer-demo-12345",
+            storageBucket: "personal-trainer-demo-12345.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:0123456789abcdef123456"
+        };
+        
+        // Firebase'i başlat
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Global olarak erişilebilir hale getir
+        window.firebaseDB = db;
+        window.firebaseModules = {
+            collection,
+            addDoc,
+            getDocs,
+            doc,
+            updateDoc,
+            deleteDoc,
+            query,
+            where,
+            orderBy
+        };
+        
+        console.log('Firebase başlatıldı');
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
@@ -780,72 +814,69 @@
     </div>
     
     <script>
-        // Güvenilir localStorage Veritabanı Sistemi (Netlify Uyumlu)
-        let useLocalStorage = true; // Netlify için localStorage öncelikli
+        // Firebase Veritabanı Sistemi
+        let useFirebase = true;
+        let useLocalStorage = false;
         const STORAGE_PREFIX = 'PT_';
 
-        // Veritabanını başlat - localStorage öncelikli
-        function initDatabase() {
-            return new Promise((resolve, reject) => {
-                try {
-                    // Netlify deployment kontrolü
-                    const isNetlify = window.location.hostname.includes('netlify') || 
-                                     window.location.hostname.includes('github.io') ||
-                                     !window.location.hostname.includes('localhost');
+        // Veritabanını başlat - Firebase öncelikli
+        async function initDatabase() {
+            try {
+                // Firebase erişim testi
+                if (window.firebaseDB && window.firebaseModules) {
+                    console.log('Firebase veritabanı sistemi başlatılıyor...');
                     
-                    if (isNetlify) {
-                        console.log('Netlify/Production ortamı tespit edildi, localStorage kullanılacak');
+                    // Test koleksiyonu oluştur
+                    const { collection, addDoc } = window.firebaseModules;
+                    
+                    try {
+                        // Firebase bağlantı testi
+                        await addDoc(collection(window.firebaseDB, 'test'), {
+                            timestamp: new Date(),
+                            test: true
+                        });
+                        
+                        console.log('Firebase bağlantı testi başarılı');
+                        useFirebase = true;
+                        useLocalStorage = false;
+                        return true;
+                        
+                    } catch (firebaseError) {
+                        console.warn('Firebase bağlantı hatası, localStorage\'a geçiliyor:', firebaseError);
+                        useFirebase = false;
                         useLocalStorage = true;
                         initLocalStorage();
-                        resolve(true);
-                        return;
+                        return true;
                     }
-
-                    // Yerel geliştirme için IndexedDB dene, başarısız olursa localStorage
-                    if (window.indexedDB && !isNetlify) {
-                        console.log('IndexedDB deneniyor...');
-                        const request = indexedDB.open('PersonalTrainerDB', 1);
-                        
-                        const timeout = setTimeout(() => {
-                            console.warn('IndexedDB timeout, localStorage\'a geçiliyor');
-                            useLocalStorage = true;
-                            initLocalStorage();
-                            resolve(true);
-                        }, 3000); // 3 saniye timeout
-                        
-                        request.onerror = () => {
-                            clearTimeout(timeout);
-                            console.warn('IndexedDB hatası, localStorage\'a geçiliyor');
-                            useLocalStorage = true;
-                            initLocalStorage();
-                            resolve(true);
-                        };
-                        
-                        request.onsuccess = () => {
-                            clearTimeout(timeout);
-                            console.log('IndexedDB başarılı ama localStorage tercih ediliyor');
-                            useLocalStorage = true; // Yine de localStorage kullan
-                            initLocalStorage();
-                            resolve(true);
-                        };
-                    } else {
-                        console.log('IndexedDB desteklenmiyor, localStorage kullanılacak');
-                        useLocalStorage = true;
-                        initLocalStorage();
-                        resolve(true);
-                    }
-                } catch (error) {
-                    console.error('Database init hatası:', error);
+                } else {
+                    console.warn('Firebase modülleri yüklenmedi, localStorage kullanılacak');
+                    useFirebase = false;
                     useLocalStorage = true;
                     initLocalStorage();
-                    resolve(true);
+                    return true;
                 }
-            });
+            } catch (error) {
+                console.error('Database init hatası:', error);
+                useFirebase = false;
+                useLocalStorage = true;
+                initLocalStorage();
+                return true;
+            }
         }
 
         // localStorage başlatma ve yönetimi
         function initLocalStorage() {
             console.log('localStorage veritabanı sistemi başlatılıyor...');
+            
+            try {
+                // localStorage erişim testi
+                localStorage.setItem('test', 'test');
+                localStorage.removeItem('test');
+                console.log('localStorage erişim testi başarılı');
+            } catch (error) {
+                console.error('localStorage erişim hatası:', error);
+                throw new Error('localStorage kullanılamıyor');
+            }
             
             // Tablolar için boş diziler oluştur
             const tables = ['clients', 'workouts', 'programs', 'measurements'];
@@ -853,6 +884,9 @@
                 if (!localStorage.getItem(STORAGE_PREFIX + table)) {
                     localStorage.setItem(STORAGE_PREFIX + table, JSON.stringify([]));
                     console.log(`${table} tablosu oluşturuldu`);
+                } else {
+                    const existingData = JSON.parse(localStorage.getItem(STORAGE_PREFIX + table));
+                    console.log(`${table} tablosu mevcut, ${existingData.length} kayıt var`);
                 }
             });
 
@@ -866,12 +900,81 @@
             if (!localStorage.getItem(STORAGE_PREFIX + 'nextId')) {
                 localStorage.setItem(STORAGE_PREFIX + 'nextId', '1');
                 console.log('ID sayacı başlatıldı');
+            } else {
+                const currentId = localStorage.getItem(STORAGE_PREFIX + 'nextId');
+                console.log(`ID sayacı mevcut: ${currentId}`);
             }
             
             console.log('localStorage veritabanı hazır!');
         }
 
-        // localStorage yardımcı fonksiyonları
+        // Firebase yardımcı fonksiyonları
+        async function addToFirebase(collectionName, data) {
+            try {
+                const { collection, addDoc } = window.firebaseModules;
+                data.createdAt = new Date();
+                data.updatedAt = new Date();
+                
+                const docRef = await addDoc(collection(window.firebaseDB, collectionName), data);
+                console.log(`${collectionName} koleksiyonuna veri eklendi:`, docRef.id);
+                
+                return { id: docRef.id, ...data };
+            } catch (error) {
+                console.error(`${collectionName} koleksiyonuna veri eklenirken hata:`, error);
+                throw error;
+            }
+        }
+
+        async function getFromFirebase(collectionName) {
+            try {
+                const { collection, getDocs, orderBy, query } = window.firebaseModules;
+                const q = query(collection(window.firebaseDB, collectionName), orderBy('createdAt', 'desc'));
+                const querySnapshot = await getDocs(q);
+                
+                const data = [];
+                querySnapshot.forEach((doc) => {
+                    data.push({ id: doc.id, ...doc.data() });
+                });
+                
+                console.log(`${collectionName} koleksiyonundan ${data.length} kayıt okundu`);
+                return data;
+            } catch (error) {
+                console.error(`${collectionName} koleksiyonu okunurken hata:`, error);
+                return [];
+            }
+        }
+
+        async function updateInFirebase(collectionName, id, data) {
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                data.updatedAt = new Date();
+                
+                const docRef = doc(window.firebaseDB, collectionName, id);
+                await updateDoc(docRef, data);
+                
+                console.log(`${collectionName} koleksiyonunda güncelleme yapıldı:`, id);
+                return { id, ...data };
+            } catch (error) {
+                console.error(`${collectionName} koleksiyonu güncellenirken hata:`, error);
+                throw error;
+            }
+        }
+
+        async function deleteFromFirebase(collectionName, id) {
+            try {
+                const { doc, deleteDoc } = window.firebaseModules;
+                const docRef = doc(window.firebaseDB, collectionName, id);
+                await deleteDoc(docRef);
+                
+                console.log(`${collectionName} koleksiyonundan silindi:`, id);
+                return true;
+            } catch (error) {
+                console.error(`${collectionName} koleksiyonundan silme hatası:`, error);
+                throw error;
+            }
+        }
+
+        // localStorage yardımcı fonksiyonları (Firebase fallback)
         function getNextId() {
             const nextId = parseInt(localStorage.getItem(STORAGE_PREFIX + 'nextId') || '1');
             localStorage.setItem(STORAGE_PREFIX + 'nextId', (nextId + 1).toString());
@@ -932,21 +1035,27 @@
             }
         }
 
-        // Basitleştirilmiş Veritabanı İşlemleri (Sadece localStorage)
+        // Hibrit Veritabanı İşlemleri (Firebase + localStorage fallback)
         const DatabaseManager = {
             // Öğrenci işlemleri
             async addClient(client) {
                 try {
-                    client.id = getNextId();
-                    client.createdAt = new Date().toISOString();
-                    client.lastWorkout = new Date().toISOString().split('T')[0];
-                    client.workouts = 0;
-                    
-                    const success = saveToLocalStorage('clients', client);
-                    if (success) {
-                        return Promise.resolve(client);
+                    if (useFirebase) {
+                        client.lastWorkout = new Date().toISOString().split('T')[0];
+                        client.workouts = 0;
+                        return await addToFirebase('clients', client);
                     } else {
-                        throw new Error('Öğrenci kaydedilemedi');
+                        client.id = getNextId();
+                        client.createdAt = new Date().toISOString();
+                        client.lastWorkout = new Date().toISOString().split('T')[0];
+                        client.workouts = 0;
+                        
+                        const success = saveToLocalStorage('clients', client);
+                        if (success) {
+                            return Promise.resolve(client);
+                        } else {
+                            throw new Error('Öğrenci kaydedilemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Öğrenci ekleme hatası:', error);
@@ -956,8 +1065,11 @@
             
             async getAllClients() {
                 try {
-                    const clients = getFromLocalStorage('clients');
-                    return Promise.resolve(clients);
+                    if (useFirebase) {
+                        return await getFromFirebase('clients');
+                    } else {
+                        return Promise.resolve(getFromLocalStorage('clients'));
+                    }
                 } catch (error) {
                     console.error('Öğrenciler yüklenirken hata:', error);
                     return Promise.resolve([]);
@@ -966,12 +1078,16 @@
             
             async updateClient(client) {
                 try {
-                    client.updatedAt = new Date().toISOString();
-                    const success = updateInLocalStorage('clients', client);
-                    if (success) {
-                        return Promise.resolve(client);
+                    if (useFirebase) {
+                        return await updateInFirebase('clients', client.id, client);
                     } else {
-                        throw new Error('Öğrenci güncellenemedi');
+                        client.updatedAt = new Date().toISOString();
+                        const success = updateInLocalStorage('clients', client);
+                        if (success) {
+                            return Promise.resolve(client);
+                        } else {
+                            throw new Error('Öğrenci güncellenemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Öğrenci güncelleme hatası:', error);
@@ -981,11 +1097,16 @@
             
             async deleteClient(id) {
                 try {
-                    const success = deleteFromLocalStorage('clients', id);
-                    if (success) {
+                    if (useFirebase) {
+                        await deleteFromFirebase('clients', id);
                         return Promise.resolve();
                     } else {
-                        throw new Error('Öğrenci silinemedi');
+                        const success = deleteFromLocalStorage('clients', id);
+                        if (success) {
+                            return Promise.resolve();
+                        } else {
+                            throw new Error('Öğrenci silinemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Öğrenci silme hatası:', error);
@@ -996,14 +1117,18 @@
             // Antrenman işlemleri
             async addWorkout(workout) {
                 try {
-                    workout.id = getNextId();
-                    workout.createdAt = new Date().toISOString();
-                    
-                    const success = saveToLocalStorage('workouts', workout);
-                    if (success) {
-                        return Promise.resolve(workout);
+                    if (useFirebase) {
+                        return await addToFirebase('workouts', workout);
                     } else {
-                        throw new Error('Antrenman kaydedilemedi');
+                        workout.id = getNextId();
+                        workout.createdAt = new Date().toISOString();
+                        
+                        const success = saveToLocalStorage('workouts', workout);
+                        if (success) {
+                            return Promise.resolve(workout);
+                        } else {
+                            throw new Error('Antrenman kaydedilemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Antrenman ekleme hatası:', error);
@@ -1013,8 +1138,11 @@
             
             async getAllWorkouts() {
                 try {
-                    const workouts = getFromLocalStorage('workouts');
-                    return Promise.resolve(workouts);
+                    if (useFirebase) {
+                        return await getFromFirebase('workouts');
+                    } else {
+                        return Promise.resolve(getFromLocalStorage('workouts'));
+                    }
                 } catch (error) {
                     console.error('Antrenmanlar yüklenirken hata:', error);
                     return Promise.resolve([]);
@@ -1023,11 +1151,16 @@
             
             async deleteWorkout(id) {
                 try {
-                    const success = deleteFromLocalStorage('workouts', id);
-                    if (success) {
+                    if (useFirebase) {
+                        await deleteFromFirebase('workouts', id);
                         return Promise.resolve();
                     } else {
-                        throw new Error('Antrenman silinemedi');
+                        const success = deleteFromLocalStorage('workouts', id);
+                        if (success) {
+                            return Promise.resolve();
+                        } else {
+                            throw new Error('Antrenman silinemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Antrenman silme hatası:', error);
@@ -1038,14 +1171,18 @@
             // Program işlemleri
             async addProgram(program) {
                 try {
-                    program.id = getNextId();
-                    program.createdAt = new Date().toISOString();
-                    
-                    const success = saveToLocalStorage('programs', program);
-                    if (success) {
-                        return Promise.resolve(program);
+                    if (useFirebase) {
+                        return await addToFirebase('programs', program);
                     } else {
-                        throw new Error('Program kaydedilemedi');
+                        program.id = getNextId();
+                        program.createdAt = new Date().toISOString();
+                        
+                        const success = saveToLocalStorage('programs', program);
+                        if (success) {
+                            return Promise.resolve(program);
+                        } else {
+                            throw new Error('Program kaydedilemedi');
+                        }
                     }
                 } catch (error) {
                     console.error('Program ekleme hatası:', error);
@@ -1055,8 +1192,11 @@
             
             async getAllPrograms() {
                 try {
-                    const programs = getFromLocalStorage('programs');
-                    return Promise.resolve(programs);
+                    if (useFirebase) {
+                        return await getFromFirebase('programs');
+                    } else {
+                        return Promise.resolve(getFromLocalStorage('programs'));
+                    }
                 } catch (error) {
                     console.error('Programlar yüklenirken hata:', error);
                     return Promise.resolve([]);
@@ -1066,11 +1206,17 @@
             // Ayarlar işlemleri
             async saveSetting(key, value) {
                 try {
-                    const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
-                    settings[key] = { value: value, updatedAt: new Date().toISOString() };
-                    localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify(settings));
-                    console.log(`Ayar kaydedildi: ${key} = ${value}`);
-                    return Promise.resolve();
+                    if (useFirebase) {
+                        // Firebase'de ayarları ayrı koleksiyon olarak sakla
+                        const settingData = { key, value };
+                        return await addToFirebase('settings', settingData);
+                    } else {
+                        const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
+                        settings[key] = { value: value, updatedAt: new Date().toISOString() };
+                        localStorage.setItem(STORAGE_PREFIX + 'settings', JSON.stringify(settings));
+                        console.log(`Ayar kaydedildi: ${key} = ${value}`);
+                        return Promise.resolve();
+                    }
                 } catch (error) {
                     console.error('Ayar kaydetme hatası:', error);
                     return Promise.reject(error);
@@ -1079,10 +1225,16 @@
             
             async getSetting(key) {
                 try {
-                    const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
-                    const value = settings[key] ? settings[key].value : null;
-                    console.log(`Ayar okundu: ${key} = ${value}`);
-                    return Promise.resolve(value);
+                    if (useFirebase) {
+                        const settings = await getFromFirebase('settings');
+                        const setting = settings.find(s => s.key === key);
+                        return Promise.resolve(setting ? setting.value : null);
+                    } else {
+                        const settings = JSON.parse(localStorage.getItem(STORAGE_PREFIX + 'settings') || '{}');
+                        const value = settings[key] ? settings[key].value : null;
+                        console.log(`Ayar okundu: ${key} = ${value}`);
+                        return Promise.resolve(value);
+                    }
                 } catch (error) {
                     console.error('Ayar okuma hatası:', error);
                     return Promise.resolve(null);
@@ -1261,11 +1413,12 @@
             // Hoş geldiniz mesajını güncelle
             const welcomeCard = document.querySelector('.card p');
             if (welcomeCard) {
+                const dbInfo = useFirebase ? '🔥 Firebase bulut veritabanı' : '💾 localStorage veritabanı';
                 welcomeCard.innerHTML = `
                     Bugün <strong>${new Date().toLocaleDateString('tr-TR')}</strong> tarihinde 
                     <strong>${todayWorkouts}</strong> antrenman kaydedildi.
                     <br><small>Toplam <strong>${clients.length}</strong> öğrenci, <strong>${workouts.length}</strong> antrenman kaydı mevcut.</small>
-                    <br><small style="color: #6200ee;">💾 Netlify uyumlu localStorage veritabanı aktif</small>
+                    <br><small style="color: #6200ee;">${dbInfo} aktif</small>
                 `;
             }
         }
@@ -1478,85 +1631,155 @@
         function addClient(event) {
             event.preventDefault();
             
-            const name = document.getElementById('clientName').value;
-            const email = document.getElementById('clientEmail').value;
-            const phone = document.getElementById('clientPhone').value;
-            const goal = document.getElementById('clientGoal').value;
-            const height = document.getElementById('clientHeight').value;
-            const weight = document.getElementById('clientWeight').value;
-            
-            const newClient = {
-                name: name,
-                email: email,
-                phone: phone,
-                goal: goal,
-                height: height ? parseFloat(height) : null,
-                weight: weight ? parseFloat(weight) : null
-            };
-            
-            // Veritabanına kaydet
-            DatabaseManager.addClient(newClient).then(() => {
-                // Success mesajını göster
-                const successMsg = document.getElementById('clientSuccess');
-                successMsg.style.display = 'block';
+            try {
+                // Form verilerini al ve validate et
+                const name = document.getElementById('clientName').value.trim();
+                const email = document.getElementById('clientEmail').value.trim();
+                const phone = document.getElementById('clientPhone').value.trim();
+                const goal = document.getElementById('clientGoal').value;
+                const height = document.getElementById('clientHeight').value;
+                const weight = document.getElementById('clientWeight').value;
                 
-                // Notification göster
-                showNotification(name + ' başarıyla eklendi ve veritabanına kaydedildi!');
+                // Zorunlu alanları kontrol et
+                if (!name) {
+                    showNotification('Ad Soyad alanı zorunludur!', 'error');
+                    return;
+                }
                 
-                // Verileri yeniden yükle
-                loadDataFromDatabase().then(() => {
-                    // 2 saniye sonra modal'ı kapat
-                    setTimeout(() => {
-                        closeModal('addClientModal');
-                    }, 2000);
+                if (!email) {
+                    showNotification('E-posta alanı zorunludur!', 'error');
+                    return;
+                }
+                
+                // Email formatını kontrol et
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    showNotification('Geçerli bir e-posta adresi girin!', 'error');
+                    return;
+                }
+                
+                console.log('Öğrenci ekleniyor:', { name, email, phone, goal });
+                
+                const newClient = {
+                    name: name,
+                    email: email,
+                    phone: phone || '',
+                    goal: goal || '',
+                    height: height ? parseFloat(height) : null,
+                    weight: weight ? parseFloat(weight) : null
+                };
+                
+                // Veritabanına kaydet
+                DatabaseManager.addClient(newClient).then((savedClient) => {
+                    console.log('Öğrenci başarıyla kaydedildi:', savedClient);
+                    
+                    // Success mesajını göster
+                    const successMsg = document.getElementById('clientSuccess');
+                    if (successMsg) {
+                        successMsg.style.display = 'block';
+                    }
+                    
+                    // Notification göster
+                    showNotification(name + ' başarıyla eklendi!', 'success');
+                    
+                    // Verileri yeniden yükle
+                    loadDataFromDatabase().then(() => {
+                        // 2 saniye sonra modal'ı kapat
+                        setTimeout(() => {
+                            closeModal('addClientModal');
+                        }, 2000);
+                    }).catch(loadError => {
+                        console.error('Veri yükleme hatası:', loadError);
+                        showNotification('Veriler yüklenirken hata oluştu!', 'error');
+                    });
+                    
+                }).catch(error => {
+                    console.error('Öğrenci ekleme hatası:', error);
+                    showNotification('Öğrenci eklenirken hata oluştu: ' + error.message, 'error');
                 });
                 
-            }).catch(error => {
-                console.error('Öğrenci ekleme hatası:', error);
-                showNotification('Öğrenci eklenirken hata oluştu!', 'error');
-            });
+            } catch (error) {
+                console.error('Form işleme hatası:', error);
+                showNotification('Form işlenirken hata oluştu: ' + error.message, 'error');
+            }
         }
         
         function addWorkout(event) {
             event.preventDefault();
             
-            const exerciseSelect = document.getElementById('exerciseName');
-            const exercise = exerciseSelect.options[exerciseSelect.selectedIndex].text;
-            const sets = parseInt(document.getElementById('workoutSets').value);
-            const reps = document.getElementById('workoutReps').value;
-            const weight = parseFloat(document.getElementById('workoutWeight').value) || 0;
-            const notes = document.getElementById('workoutNotes').value;
-            
-            const newWorkout = {
-                exercise: exercise,
-                sets: sets,
-                reps: reps,
-                weight: weight,
-                notes: notes,
-                date: new Date().toISOString().split('T')[0]
-            };
-            
-            // Veritabanına kaydet
-            DatabaseManager.addWorkout(newWorkout).then(() => {
-                // Success mesajını göster
-                const successMsg = document.getElementById('workoutSuccess');
-                successMsg.style.display = 'block';
+            try {
+                const exerciseSelect = document.getElementById('exerciseName');
+                const setsInput = document.getElementById('workoutSets');
+                const repsInput = document.getElementById('workoutReps');
+                const weightInput = document.getElementById('workoutWeight');
+                const notesInput = document.getElementById('workoutNotes');
                 
-                // Notification göster
-                showNotification(exercise + ' antrenmanı kaydedildi ve veritabanına kaydedildi!');
+                // Zorunlu alanları kontrol et
+                if (!exerciseSelect.value) {
+                    showNotification('Egzersiz seçimi zorunludur!', 'error');
+                    return;
+                }
                 
-                // Verileri yeniden yükle
-                loadDataFromDatabase().then(() => {
-                    // 2 saniye sonra modal'ı kapat
-                    setTimeout(() => {
-                        closeModal('addWorkoutModal');
-                    }, 2000);
+                if (!setsInput.value) {
+                    showNotification('Set sayısı zorunludur!', 'error');
+                    return;
+                }
+                
+                if (!repsInput.value) {
+                    showNotification('Tekrar sayısı zorunludur!', 'error');
+                    return;
+                }
+                
+                const exercise = exerciseSelect.options[exerciseSelect.selectedIndex].text;
+                const sets = parseInt(setsInput.value);
+                const reps = repsInput.value.trim();
+                const weight = parseFloat(weightInput.value) || 0;
+                const notes = notesInput.value.trim();
+                
+                console.log('Antrenman ekleniyor:', { exercise, sets, reps, weight });
+                
+                const newWorkout = {
+                    exercise: exercise,
+                    sets: sets,
+                    reps: reps,
+                    weight: weight,
+                    notes: notes,
+                    date: new Date().toISOString().split('T')[0]
+                };
+                
+                // Veritabanına kaydet
+                DatabaseManager.addWorkout(newWorkout).then((savedWorkout) => {
+                    console.log('Antrenman başarıyla kaydedildi:', savedWorkout);
+                    
+                    // Success mesajını göster
+                    const successMsg = document.getElementById('workoutSuccess');
+                    if (successMsg) {
+                        successMsg.style.display = 'block';
+                    }
+                    
+                    // Notification göster
+                    showNotification(exercise + ' antrenmanı kaydedildi!', 'success');
+                    
+                    // Verileri yeniden yükle
+                    loadDataFromDatabase().then(() => {
+                        // 2 saniye sonra modal'ı kapat
+                        setTimeout(() => {
+                            closeModal('addWorkoutModal');
+                        }, 2000);
+                    }).catch(loadError => {
+                        console.error('Veri yükleme hatası:', loadError);
+                        showNotification('Veriler yüklenirken hata oluştu!', 'error');
+                    });
+                    
+                }).catch(error => {
+                    console.error('Antrenman ekleme hatası:', error);
+                    showNotification('Antrenman kaydedilirken hata oluştu: ' + error.message, 'error');
                 });
                 
-            }).catch(error => {
-                console.error('Antrenman ekleme hatası:', error);
-                showNotification('Antrenman kaydedilirken hata oluştu!', 'error');
-            });
+            } catch (error) {
+                console.error('Form işleme hatası:', error);
+                showNotification('Form işlenirken hata oluştu: ' + error.message, 'error');
+            }
         }
         
         function createProgram(event) {
@@ -1939,9 +2162,15 @@
                 // Veritabanını başlat
                 await initDatabase();
                 
-                console.log('localStorage veritabanı sistemi aktif');
-                document.getElementById('db-status').textContent = '💾 localStorage: Aktif ✅';
-                showNotification('Netlify uyumlu veritabanı başarıyla başlatıldı! Tüm değişiklikler kaydediliyor.', 'success');
+                if (useFirebase) {
+                    console.log('Firebase Firestore veritabanı sistemi aktif');
+                    document.getElementById('db-status').textContent = '� Firebase: Aktif ✅';
+                    showNotification('Firebase bulut veritabanı başarıyla başlatıldı! Veriler gerçek zamanlı senkronize ediliyor.', 'success');
+                } else {
+                    console.log('localStorage veritabanı sistemi aktif (Firebase fallback)');
+                    document.getElementById('db-status').textContent = '💾 localStorage: Aktif ✅';
+                    showNotification('localStorage veritabanı başarıyla başlatıldı! (Firebase fallback)', 'info');
+                }
                 
                 // Verileri yükle
                 await loadDataFromDatabase();
@@ -1962,10 +2191,14 @@
                     }, index * 100);
                 });
                 
-                // Netlify deployment için özel mesaj
+                // Firebase/Netlify deployment için özel mesaj
                 if (window.location.hostname.includes('netlify')) {
                     setTimeout(() => {
-                        showNotification('🚀 Netlify deployment başarılı! Database localStorage ile çalışıyor.', 'info');
+                        if (useFirebase) {
+                            showNotification('🚀 Netlify + Firebase deployment başarılı! Veriler bulutta güvende.', 'info');
+                        } else {
+                            showNotification('🚀 Netlify deployment başarılı! Database localStorage ile çalışıyor.', 'info');
+                        }
                     }, 2000);
                 }
                 
