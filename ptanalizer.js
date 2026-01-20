@@ -1,4 +1,6 @@
 // PTAnalizer JavaScript - Personal Trainer Analytics v1.2
+console.log('🔧 PTAnalizer JavaScript dosyası yüklendi!');
+
 // Firebase Veritabanı Sistemi
 let useFirebase = true;
 let useLocalStorage = false;
